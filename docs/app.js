@@ -240,7 +240,7 @@ function zoneTable(zs,title){
 }
 function actions(la,lo,st,exact){
   const satBtn=MAPI.kind==='mapbox'?`<button class="btn" type="button" data-sat="${la.toFixed(6)},${lo.toFixed(6)}">Satellite close-up</button>`:`<a class="btn" href="${osm(la,lo)}" target="_blank" rel="noopener">Open in OpenStreetMap \u2197</a>`;
-  return `<div class="actions">${satBtn}<a class="btn ghost" href="https://www.postcode.gov.ng" target="_blank" rel="noopener">postcode.gov.ng \u2197</a></div>
+  return `<div class="actions">${satBtn}<a class="btn wab" href="${waHref({name:'this spot in '+SC[st],lat:la,lng:lo})}" target="_blank" rel="noopener">WhatsApp us about it</a><a class="btn ghost" href="https://www.postcode.gov.ng" target="_blank" rel="noopener">postcode.gov.ng \u2197</a></div>
   <div class="pc" data-pc="${la.toFixed(6)},${lo.toFixed(6)}" data-st="${st}" data-exact="${exact?1:0}">${postcodeIdle(st)}</div>
   <p class="note">Coordinates <span class="mono">${la.toFixed(5)}, ${lo.toFixed(5)}</span> <button class="linkbtn" type="button" data-copy="${la.toFixed(6)}, ${lo.toFixed(6)}">Copy</button> \u00b7 <button class="linkbtn" type="button" data-copy="https://value.buildocrat.store/#at=${la.toFixed(5)},${lo.toFixed(5)}">Copy link</button></p>`; }
 const EVM={land:['land_res','residential land','/m\u00b2'],bld:['sale4','4-bed house sales',''],rent:['rent3','3-bed flat rents','/yr']};
@@ -250,7 +250,10 @@ function nearbyEvidence(la,lo){ const [m,lab,u]=EVM[TAB]; const rows=EV.filter(e
 function crumbs(parts){ return `<div class="crumbs">${parts.map(([t,a],i)=>(a?`<button type="button" data-go="${a}">${esc(t)}</button>`:`<span>${esc(t)}</span>`)+(i<parts.length-1?'<span>\u203a</span>':'')).join('')}</div>`; }
 function ancestors(j){ const out=[]; let p=PL.pa[j], n=0; while(p>=0&&n<5){ out.unshift(p); p=PL.pa[p]; n++; } return out; }
 let SEL=null, RER=null; // current selection and how to redraw it (for tab switches)
-function setSel(s){ SEL=s; estimate(); }
+const WA_NO='2347018024292';
+function waText(s){ return s?`Hello Buildocrat, I'm interested in ${s.name.replace(/^Pinned spot/,'a spot')} on the Land Value Book: https://value.buildocrat.store/#at=${s.lat.toFixed(5)},${s.lng.toFixed(5)} . `:"Hello Buildocrat, I'm on the Land Value Book (value.buildocrat.store). "; }
+const waHref=s=>`https://wa.me/${WA_NO}?text=${encodeURIComponent(waText(s))}`;
+function setSel(s){ SEL=s; estimate(); const a=$('wa'); if(a) a.href=waHref(s); }
 function selectPlace(j,fly=true){
   RER=()=>selectPlace(j,false);
   const g=LG[PL.g[j]], la=PL.la[j]/1e4, lo=PL.lo[j]/1e4, v=placeVals(j), t=PL.t[j], plot=g.plot||600;
