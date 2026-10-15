@@ -23,7 +23,7 @@ Live at **https://value.buildocrat.store/** (served by GitHub Pages from `docs/`
 
 ## One-time setup
 
-1. **Repository.** Create a public GitHub repo (e.g. `alpontif/buildocrat-land-book`) and push this folder to `main`.
+1. **Repository.** Create a public GitHub repo (e.g. `alpontif/buildocrat-value-book`) and push this folder to `main`.
 2. **GitHub Pages.** Settings → Pages → Source: *Deploy from a branch* → `main` / `/docs`. Tick *Enforce HTTPS* once the certificate is issued.
 3. **Actions permissions.** Settings → Actions → General → Workflow permissions: *Read and write*.
 4. **Domain.** At your DNS host for `buildocrat.store`, add `CNAME  value  →  alpontif.github.io` (same as `rates`). `docs/CNAME` already says `value.buildocrat.store`; change `domain` in `site-config.json` if you pick another name, then run `python pipeline/pages.py`.

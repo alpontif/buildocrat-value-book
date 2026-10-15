@@ -18,7 +18,7 @@ If the crawl keeps getting blocked from GitHub's servers, ask Claude on Monday:
 
 > Refresh the Land Value Book for this week.
 
-Claude then: attaches `alpontif/buildocrat-land-book` with push access → collects the week's listings through its browser (the same sources as `pipeline/crawl.py`) into `pipeline/raw/` → runs `python pipeline/refresh.py --no-crawl` → checks the site locally → commits and pushes. GitHub Pages publishes within a couple of minutes.
+Claude then: attaches `alpontif/buildocrat-value-book` with push access → collects the week's listings through its browser (the same sources as `pipeline/crawl.py`) into `pipeline/raw/` → runs `python pipeline/refresh.py --no-crawl` → checks the site locally → commits and pushes. GitHub Pages publishes within a couple of minutes.
 
 ## Changing things
 
