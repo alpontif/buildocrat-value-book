@@ -10,93 +10,144 @@
 <meta property="og:description" content="Land prices per m², rents and house prices for every state, LGA, town and village in Nigeria, on a satellite map with NIPOST postcodes. Updated weekly.">
 <meta property="og:url" content="https://value.buildocrat.store/">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230E5A4B'/%3E%3Cpath d='M6 22l7-9 5 6 3-4 5 7z' fill='%23D7E7E0'/%3E%3C/svg%3E">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://api.mapbox.com" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
 <style>
-/* Layout: sister of the Rate Book. Survey-plan green on cool field grey. A national plan sheet (canvas map) with a valuation card beside it, then ledgers for states, LGAs and places. */
+/* Design language: the strategy-infographic look. Deep navy display type in a geometric sans (Poppins), navy pill labels,
+   two-tone row blocks (a strong colour column beside a pale panel), arrow-in-circle bullets, thin navy line icons,
+   indigo and coral as the two block colours, all on a cool paper grey inside rounded white sheets. */
 :root{
-  --bg:#ECEDE9; --surface:#F7F7F3; --sunk:#E2E4DD; --ink:#16201B; --muted:#56615A; --line:#CDD1C7;
-  --accent:#0E5A4B; --accent-soft:#D7E7E0; --on-accent:#FFFFFF; --pin:#C2410C;
-  --sea:#DCE3DE; --land:#F2F2EC; --edge:#B5BDB3; --sedge:#6E7A72; --sel:#16201B;
-  --s0:#E3EBC9; --s1:#BEDDA7; --s2:#86C29A; --s3:#4C9C82; --s4:#25725F; --s5:#0E4A3F; --s6:#062A24;
-  --hi:#1B7A3E; --mid:#A06A00; --lo:#A3402A; --nd:#E4E6E1;
-  --f-display:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
-  --f-body:"Source Sans 3","Segoe UI",Roboto,Arial,sans-serif;
-  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --bg:#EFEFF3; --surface:#FFFFFF; --sunk:#EEF0F9; --ink:#22275A; --muted:#5E638E; --line:#D3D6EA;
+  --navy:#1D2675; --indigo:#3C49A1; --lav:#DCDFF2; --coral:#E8725B; --peach:#F8DDD4;
+  --accent:#1D2675; --accent-soft:#E4E6F6; --on-accent:#FFFFFF; --pin:#E8725B;
+  --sea:#E6E8F4; --land:#F4F5FB; --edge:#B8BDDE; --sedge:#5A62A8; --sel:#1D2675;
+  --s0:#EEF0FA; --s1:#D2D6F0; --s2:#ABB2E0; --s3:#7D87CA; --s4:#5460B0; --s5:#333E93; --s6:#1B2370;
+  --hi:#1F8A5B; --mid:#B26A00; --lo:#C94A33; --nd:#E9EAF2;
+  --f-display:"Poppins","Segoe UI",Arial,sans-serif;
+  --f-body:"Poppins","Segoe UI",Roboto,Arial,sans-serif;
+  --f-mono:"Poppins","Segoe UI",Arial,sans-serif;
+  --r-sheet:22px; --r-block:16px;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#101513; --surface:#171E1B; --sunk:#0C110F; --ink:#E6EBE6; --muted:#9BA69F; --line:#2A3430;
-  --accent:#5CC3A4; --accent-soft:#16342C; --on-accent:#08201A; --pin:#F59E5B;
-  --sea:#0B100E; --land:#1B231F; --edge:#33403A; --sedge:#7D8A83; --sel:#F2F5F2;
-  --s0:#26402C; --s1:#2F5A3D; --s2:#3A7A57; --s3:#4D9C77; --s4:#73BE9C; --s5:#A9DEC6; --s6:#E1F6EC;
-  --hi:#6BCB8A; --mid:#E2B24F; --lo:#F08A70; --nd:#222A26; color-scheme:dark}}
+  --bg:#0F1234; --surface:#171B47; --sunk:#1F2458; --ink:#E7E9FA; --muted:#A3A8D6; --line:#2C3270;
+  --navy:#C9CEFF; --indigo:#4A57B8; --lav:#252B66; --coral:#F08A73; --peach:#3A2730;
+  --accent:#AEB6FF; --accent-soft:#262C6A; --on-accent:#0F1234; --pin:#F08A73;
+  --sea:#11153A; --land:#1A1F4F; --edge:#333A7E; --sedge:#8D95E0; --sel:#F2F3FF;
+  --s0:#1E2356; --s1:#29317A; --s2:#3743A0; --s3:#5562C2; --s4:#7F8BDA; --s5:#B1B9EE; --s6:#E3E6FF;
+  --hi:#5BD39A; --mid:#E8B655; --lo:#F2907A; --nd:#1C2050; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#101513; --surface:#171E1B; --sunk:#0C110F; --ink:#E6EBE6; --muted:#9BA69F; --line:#2A3430;
-  --accent:#5CC3A4; --accent-soft:#16342C; --on-accent:#08201A; --pin:#F59E5B;
-  --sea:#0B100E; --land:#1B231F; --edge:#33403A; --sedge:#7D8A83; --sel:#F2F5F2;
-  --s0:#26402C; --s1:#2F5A3D; --s2:#3A7A57; --s3:#4D9C77; --s4:#73BE9C; --s5:#A9DEC6; --s6:#E1F6EC;
-  --hi:#6BCB8A; --mid:#E2B24F; --lo:#F08A70; --nd:#222A26; color-scheme:dark}
+  --bg:#0F1234; --surface:#171B47; --sunk:#1F2458; --ink:#E7E9FA; --muted:#A3A8D6; --line:#2C3270;
+  --navy:#C9CEFF; --indigo:#4A57B8; --lav:#252B66; --coral:#F08A73; --peach:#3A2730;
+  --accent:#AEB6FF; --accent-soft:#262C6A; --on-accent:#0F1234; --pin:#F08A73;
+  --sea:#11153A; --land:#1A1F4F; --edge:#333A7E; --sedge:#8D95E0; --sel:#F2F3FF;
+  --s0:#1E2356; --s1:#29317A; --s2:#3743A0; --s3:#5562C2; --s4:#7F8BDA; --s5:#B1B9EE; --s6:#E3E6FF;
+  --hi:#5BD39A; --mid:#E8B655; --lo:#F2907A; --nd:#1C2050; color-scheme:dark}
 
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-.wa{position:fixed;right:16px;bottom:16px;z-index:60;display:inline-flex;align-items:center;gap:8px;background:#25D366;color:#073b1c;font:700 15px var(--f-body);padding:12px 16px 12px 14px;border-radius:999px;text-decoration:none;box-shadow:0 8px 24px rgba(0,0,0,.25)}
-.wa svg{width:22px;height:22px}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15.5px;line-height:1.6;padding-inline:16px;padding-block:0 64px;font-variant-numeric:tabular-nums}
+.wrap{max-width:1320px;margin-inline:auto}
+a{color:var(--indigo);text-underline-offset:3px}
+:focus-visible{outline:3px solid var(--coral);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.08;color:var(--navy)}
+h2{font-size:clamp(1.5rem,2.6vw,2.1rem);font-weight:800;letter-spacing:-.015em}
+h3{font-size:1.02rem;font-weight:700}
+p{margin:0}
+.num,.mono{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)} .small{font-size:.85rem}
+
+/* the navy pill: the infographic's column header, used for section labels */
+.eyebrow{display:inline-block;font:600 .78rem/1 var(--f-display);color:#fff;background:var(--navy);padding:8px 16px;border-radius:999px;letter-spacing:.01em}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .eyebrow{color:#0F1234}}
+.panel .eyebrow,.sheet .eyebrow,.pc .eyebrow{background:none;color:var(--muted);padding:0;font-weight:600;font-size:.76rem;border-radius:0}
+
+.btn{font:600 .88rem var(--f-body);padding:9px 18px;border-radius:999px;border:1.5px solid var(--navy);background:var(--navy);color:var(--on-accent);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn.ghost{background:transparent;color:var(--navy)}
+.btn.sm{padding:5px 12px;font-size:.8rem}
 .btn.wab{background:#25D366;border-color:#25D366;color:#073b1c}
+.pill{display:inline-block;font:600 .7rem var(--f-body);padding:2px 9px;border-radius:999px;border:1.5px solid currentColor;white-space:nowrap}
+.c-H{color:var(--hi)}.c-M{color:var(--mid)}.c-L{color:var(--lo)}
+input,select{font:inherit;font-size:.92rem;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:9px 13px;min-width:0}
+input:focus,select:focus{border-color:var(--indigo);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+
+.wa{position:fixed;right:18px;bottom:18px;z-index:60;display:inline-flex;align-items:center;gap:8px;background:#25D366;color:#073b1c;font:700 15px var(--f-body);padding:12px 18px 12px 14px;border-radius:999px;text-decoration:none;box-shadow:0 10px 26px rgba(14,20,80,.28)}
+.wa svg{width:22px;height:22px}
 @media (max-width:520px){.wa span{display:none}.wa{padding:13px}}
 
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;padding-inline:16px;padding-block:0 48px}
-.wrap{max-width:1320px;margin-inline:auto}
-a{color:var(--accent);text-underline-offset:2px}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.1;letter-spacing:-.01em}
-h2{font-size:clamp(1.4rem,2.3vw,1.85rem);font-weight:700}
-h3{font-size:1.05rem;font-weight:600}
-p{margin:0}
-.num,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
-.eyebrow{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
-.muted{color:var(--muted)} .small{font-size:.86rem}
-.btn{font:600 .9rem var(--f-body);padding:8px 14px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.btn.ghost{background:transparent;color:var(--accent)}
-.btn.sm{padding:5px 10px;font-size:.82rem}
-.pill{display:inline-block;font-size:.7rem;font-family:var(--f-mono);padding:1px 7px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
-.c-H{color:var(--hi)}.c-M{color:var(--mid)}.c-L{color:var(--lo)}
-input,select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 11px;min-width:0}
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin-inline:-16px;padding:10px 16px}
+.top .wrap{display:flex;align-items:center;gap:8px 22px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--navy)}
+.brand::before{content:"";width:30px;height:30px;border-radius:9px;background:var(--navy) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z'/%3E%3Ccircle cx='12' cy='11' r='2.2'/%3E%3C/svg%3E") center/18px no-repeat}
+.brand b{font-weight:800;font-size:1.02rem;letter-spacing:-.01em}
+.brand span{font-weight:500;color:var(--muted)}
+.nav{display:flex;gap:4px 18px;flex-wrap:wrap;font-size:.86rem;font-weight:500}
+.nav a{color:var(--muted);text-decoration:none}.nav a:hover{color:var(--navy)}
+.top .sib{margin-left:auto;font-size:.82rem;font-weight:600;color:var(--navy);text-decoration:none;border:1.5px solid var(--line);padding:6px 14px;border-radius:999px}
 
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--bg);border-bottom:1px solid var(--line);margin-inline:-16px;padding:9px 16px}
-.top .wrap{display:flex;align-items:center;gap:8px 20px;flex-wrap:wrap}
-.brand{display:flex;align-items:baseline;gap:6px;text-decoration:none;color:var(--ink)}
-.brand b{font-family:var(--f-display);font-size:1.12rem;font-weight:700}
-.brand span{font-family:var(--f-display);font-weight:500;color:var(--accent)}
-.nav{display:flex;gap:4px 16px;flex-wrap:wrap;font-size:.9rem}
-.nav a{color:var(--muted);text-decoration:none}.nav a:hover{color:var(--ink)}
-.top .sib{margin-left:auto;font-size:.84rem}
-
-.hero{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:28px;padding-block:28px 20px;align-items:end}
-.hero h1{font-size:clamp(2rem,4.6vw,3.2rem);font-weight:700}
-.lede{margin-top:12px;max-width:64ch;font-size:1.05rem;color:var(--muted)}
+/* hero: a rounded white sheet, kicker, big navy display type and the white pin tile, as in the reference */
+.hero{position:relative;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:28px 40px;margin-top:22px;padding:40px 40px 34px;background:var(--surface);border-radius:var(--r-sheet);align-items:end}
+.hero .kicker{font:600 .82rem var(--f-display);letter-spacing:.06em;color:var(--navy);text-transform:uppercase}
+.hero h1{font-size:clamp(2.6rem,6.2vw,4.9rem);font-weight:800;letter-spacing:-.03em;line-height:.98;margin-top:10px}
+.pintile{position:absolute;top:22px;right:22px;width:64px;height:64px;border-radius:16px;background:var(--surface);box-shadow:0 6px 22px rgba(29,38,117,.16);display:grid;place-items:center;color:var(--navy);text-decoration:none}
+.pintile svg{width:30px;height:30px}
+.lede{margin-top:16px;max-width:60ch;font-size:1rem;color:var(--muted)}
 .lede strong{color:var(--ink);font-weight:600}
-.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.stats div{background:var(--surface);padding:12px 14px}
-.stats b{display:block;font-family:var(--f-display);font-size:1.55rem;font-weight:700;line-height:1.1}
-.stats span{font-size:.82rem;color:var(--muted)}
-
-.searchbox{position:relative;margin-top:18px;max-width:640px}
-.searchbox input{width:100%;padding:12px 14px;font-size:1.02rem}
-.sugg{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.14);z-index:40;max-height:360px;overflow:auto;list-style:none;margin:0;padding:4px}
-.sugg li button{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;gap:10px;width:100%;padding:8px 10px;border-radius:6px;cursor:pointer}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border-radius:var(--r-block);overflow:hidden;background:var(--lav)}
+.stats div{padding:14px 16px;border-bottom:1px solid color-mix(in srgb,var(--navy) 14%,transparent)}
+.stats div:nth-child(odd){border-right:1px solid color-mix(in srgb,var(--navy) 14%,transparent)}
+.stats div:nth-last-child(-n+2){border-bottom:0}
+.stats b{display:block;font-size:1.6rem;font-weight:800;line-height:1.1;color:var(--navy)}
+.stats span{font-size:.78rem;color:var(--muted)}
+.searchbox{position:relative;margin-top:22px;max-width:640px}
+.searchbox input{width:100%;padding:14px 18px 14px 46px;font-size:1rem;border-radius:999px;border-color:var(--lav);background:var(--sunk) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231D2675' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") 17px center/18px no-repeat}
+.sugg{position:absolute;left:0;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 16px 40px rgba(29,38,117,.18);z-index:40;max-height:360px;overflow:auto;list-style:none;margin:0;padding:6px}
+.sugg li button{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;gap:10px;width:100%;padding:9px 12px;border-radius:10px;cursor:pointer}
 .sugg li button:hover,.sugg li button[aria-selected="true"]{background:var(--accent-soft)}
-.sugg .k{font-family:var(--f-mono);font-size:.72rem;color:var(--muted);white-space:nowrap}
+.sugg .k{font-size:.74rem;color:var(--muted);white-space:nowrap}
 
-section{padding-block:30px;border-top:1px solid var(--line)}
-.sec-head{display:flex;justify-content:space-between;align-items:end;gap:10px 24px;flex-wrap:wrap;margin-bottom:16px}
-.sec-head p{max-width:70ch;color:var(--muted);margin-top:6px}
+/* the three-values block: strategy / tactics / action-plan layout from the reference */
+.trio{margin-top:22px;background:var(--surface);border-radius:var(--r-sheet);padding:26px;overflow:hidden}
+.trio-head{display:grid;grid-template-columns:minmax(200px,.8fr) minmax(0,1fr) minmax(0,1fr);gap:0 22px;align-items:end;margin-bottom:14px}
+.trio-head .ic{display:flex;flex-direction:column;align-items:center;gap:10px}
+.trio-head svg{width:40px;height:40px;color:var(--navy)}
+.trio-head .eyebrow{min-width:150px;text-align:center}
+.trow{display:grid;grid-template-columns:minmax(200px,.8fr) minmax(0,2fr);border-radius:var(--r-block);overflow:hidden;margin-top:12px}
+.tlead{background:var(--indigo);color:#fff;padding:22px 20px;display:flex;flex-direction:column;gap:8px;cursor:pointer;border:0;text-align:left;font:inherit}
+.tlead svg{width:44px;height:44px;color:#fff;opacity:.95}
+.tlead strong{font:700 1.15rem/1.15 var(--f-display);color:#fff}
+.tlead span{font-size:.82rem;color:rgba(255,255,255,.82)}
+.tlead em{font-style:normal;font-weight:600;font-size:.78rem;margin-top:auto;color:#fff;text-decoration:underline;text-underline-offset:3px}
+.tbody{background:var(--lav);display:grid;grid-template-columns:1fr 1fr}
+.tbody ul{list-style:none;margin:0;padding:6px 20px}
+.tbody ul+ul{border-left:1.5px solid color-mix(in srgb,var(--navy) 30%,transparent)}
+.tbody li{display:flex;gap:12px;align-items:flex-start;padding:12px 0;font-size:.86rem;color:var(--ink)}
+.tbody li+li{border-top:1px solid color-mix(in srgb,var(--navy) 18%,transparent)}
+.tbody li::before{content:"";flex:0 0 22px;height:22px;border-radius:50%;border:1.5px solid var(--navy);background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231D2675' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12h11M13 7l5 5-5 5'/%3E%3C/svg%3E") center/13px no-repeat}
+.trow.coral .tlead{background:var(--coral)}
+.trow.coral .tbody{background:var(--peach)}
+.trow.coral .tbody li::before{border-color:var(--coral);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23E8725B' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12h11M13 7l5 5-5 5'/%3E%3C/svg%3E")}
+.trow.coral .tbody ul+ul{border-color:color-mix(in srgb,var(--coral) 45%,transparent)}
+.trow.coral .tbody li+li{border-color:color-mix(in srgb,var(--coral) 30%,transparent)}
+.trow.deep .tlead{background:var(--navy)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .trow.deep .tlead{background:#2A3488}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tbody li::before,:root:not([data-theme="light"]) .cols li::before{border-color:#C9CEFF;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23C9CEFF' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12h11M13 7l5 5-5 5'/%3E%3C/svg%3E")}
+:root:not([data-theme="light"]) .trow.coral .tbody li::before{border-color:#F08A73}}
+
+section{padding-block:44px 8px}
+.sec-head{display:flex;justify-content:space-between;align-items:end;gap:10px 24px;flex-wrap:wrap;margin-bottom:18px}
+.sec-head h2{margin-top:12px}
+.sec-head p{max-width:68ch;color:var(--muted);margin-top:8px}
+.sec-head .eyebrow{color:#fff;margin-top:0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .sec-head .eyebrow{color:#0F1234}}
 
 /* map app */
-.app{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr);gap:16px;align-items:start}
-.mapcard{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--sea);min-width:0}
+.app{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(330px,1fr);gap:18px;align-items:start}
+.mapcard{position:relative;border-radius:var(--r-sheet);overflow:hidden;background:var(--sea);min-width:0;box-shadow:0 0 0 1px var(--line)}
 #map{display:block;width:100%;height:min(74vh,720px);touch-action:none;cursor:grab}
 #map.drag{cursor:grabbing}
 #mbmap{width:100%;height:min(74vh,720px)}
@@ -104,98 +155,111 @@ section{padding-block:30px;border-top:1px solid var(--line)}
 .mb .hint{display:none}
 .mb .tip{z-index:5}
 .mapboxgl-ctrl-bottom-right{z-index:3}
-.pc{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.tabs{display:inline-flex;gap:6px;margin:0 0 14px;padding:6px;background:var(--surface);border-radius:999px;overflow-x:auto;max-width:100%}
+.tabs button{font:600 .95rem var(--f-display);padding:10px 22px;border:0;border-radius:999px;background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--navy);color:var(--on-accent)}
+.pinbox{background:var(--surface);border-radius:var(--r-block);padding:14px 16px;margin-bottom:14px}
+.pinbox label{display:block;font-weight:700;color:var(--navy);font-size:.9rem;margin-bottom:8px}
+.pinrow{display:flex;gap:8px;flex-wrap:wrap}.pinrow input{flex:1 1 280px;border-radius:999px;padding-left:18px}
+.pc{border-radius:14px;padding:12px 14px;background:var(--sunk)}
 .pcode{display:flex;align-items:baseline;gap:10px;margin:2px 0 4px}
-.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin:4px 0 12px;overflow-x:auto}
-.tabs button{font:700 1rem var(--f-display);padding:10px 16px;border:0;background:transparent;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
-.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
-.pinbox{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px}
-.pinbox label{display:block;font-weight:600;font-size:.86rem;margin-bottom:6px}
-.pinrow{display:flex;gap:8px;flex-wrap:wrap}.pinrow input{flex:1 1 280px}
-.ztag{font:600 .72rem var(--f-mono);padding:2px 8px;border-radius:999px;border:1px solid var(--zc);color:var(--zc);align-self:center}
+.pcode .mono{font-size:1.35rem;font-weight:700;letter-spacing:.06em;color:var(--navy)}
+.ztag{font:600 .72rem var(--f-body);padding:3px 10px;border-radius:999px;border:1.5px solid var(--zc);color:var(--zc);align-self:center}
 .zdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
-.zleg{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:5px;max-width:330px}.zleg span{display:inline-flex;align-items:center;gap:4px}.zleg i{width:10px;height:10px;border-radius:50%;display:inline-block}
-.lgafilt{display:flex;gap:6px;margin-bottom:6px}.lgafilt input{flex:1;min-width:0}
+.zleg{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px;max-width:330px}.zleg span{display:inline-flex;align-items:center;gap:5px}.zleg i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.lgafilt{display:flex;gap:6px;margin-bottom:8px}.lgafilt input{flex:1;min-width:0}
 .mini.zt td{font-size:.8rem}
-.pcode .mono{font-size:1.35rem;font-weight:600;letter-spacing:.04em;color:var(--accent)}
-.mapbar{position:absolute;top:10px;left:10px;right:10px;display:flex;gap:6px;flex-wrap:wrap;z-index:2;pointer-events:none}
+.mapbar{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:6px;flex-wrap:wrap;z-index:2;pointer-events:none}
 .mapbar>*{pointer-events:auto}
-.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
-.seg button{font:600 .8rem var(--f-body);border:0;background:transparent;color:var(--ink);padding:6px 9px;cursor:pointer;border-right:1px solid var(--line)}
-.seg button:last-child{border-right:0}
-.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
-.legend{position:absolute;left:10px;bottom:10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.74rem;z-index:2;max-width:calc(100% - 20px)}
-.legend .row{display:flex;margin-top:5px}
-.legend .row i{display:block;width:30px;height:9px}
-.legend .lab{display:flex;margin-top:2px;font-family:var(--f-mono);color:var(--muted);font-size:.64rem}
+.seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border-radius:999px;background:var(--surface);box-shadow:0 4px 14px rgba(29,38,117,.14)}
+.seg button{font:600 .78rem var(--f-body);border:0;background:transparent;color:var(--ink);padding:6px 12px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--navy);color:var(--on-accent)}
+.legend{position:absolute;left:12px;bottom:12px;background:var(--surface);border-radius:14px;padding:10px 12px;font-size:.74rem;z-index:2;max-width:calc(100% - 24px);box-shadow:0 4px 14px rgba(29,38,117,.14);color:var(--ink)}
+.legend .row{display:flex;margin-top:6px;border-radius:999px;overflow:hidden;width:max-content}
+.legend .row i{display:block;width:30px;height:10px}
+.legend .lab{display:flex;margin-top:3px;color:var(--muted);font-size:.64rem}
 .legend .lab span{width:30px;text-align:right;transform:translateX(50%)}
 .legend .lab span:last-child{visibility:hidden}
-.hint{position:absolute;right:10px;bottom:10px;font-size:.74rem;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 8px;color:var(--muted);z-index:2}
-.tip{position:absolute;z-index:3;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:.8rem;box-shadow:0 6px 18px rgba(0,0,0,.14);max-width:260px}
-.tip b{font-family:var(--f-display)}
+.hint{position:absolute;right:12px;bottom:12px;font-size:.74rem;background:var(--surface);border-radius:999px;padding:6px 12px;color:var(--muted);z-index:2}
+.tip{position:absolute;z-index:3;pointer-events:none;background:var(--surface);border-radius:12px;padding:9px 11px;font-size:.8rem;box-shadow:0 10px 26px rgba(29,38,117,.22);max-width:260px;color:var(--ink)}
+.tip b{color:var(--navy)}
 
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0;position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}
-.crumbs{font-size:.82rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px}
-.crumbs button{all:unset;cursor:pointer;color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+.panel{background:var(--surface);border-radius:var(--r-sheet);padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0;position:sticky;top:70px;max-height:calc(100vh - 86px);overflow:auto}
+.crumbs{font-size:.8rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px}
+.crumbs button{all:unset;cursor:pointer;color:var(--indigo);text-decoration:underline;text-underline-offset:3px}
 .ptitle{display:flex;justify-content:space-between;gap:10px;align-items:start}
-.ptitle h3{font-size:1.4rem}
-.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.tag{font-size:.72rem;font-family:var(--f-mono);padding:2px 8px;border-radius:6px;background:var(--sunk);color:var(--muted)}
-.tag.u{background:var(--accent-soft);color:var(--accent)}
+.ptitle h3{font-size:1.5rem;font-weight:800;letter-spacing:-.015em}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tag{font-size:.72rem;font-weight:500;padding:3px 10px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+.tag.u{background:var(--navy);color:var(--on-accent)}
 .headline{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.headline .big{font-family:var(--f-display);font-size:2.1rem;font-weight:700;color:var(--accent);line-height:1}
-.vals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.vals div{background:var(--surface);padding:9px 11px;min-width:0}
+.headline .big{font-size:2.3rem;font-weight:800;color:var(--navy);line-height:1;letter-spacing:-.02em}
+.vals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-radius:var(--r-block);overflow:hidden;background:var(--lav)}
+.vals div{padding:11px 14px;min-width:0;border-bottom:1px solid color-mix(in srgb,var(--navy) 14%,transparent)}
+.vals div:nth-child(odd){border-right:1px solid color-mix(in srgb,var(--navy) 14%,transparent)}
 .vals span{display:block;font-size:.74rem;color:var(--muted)}
-.vals b{font-family:var(--f-mono);font-size:.98rem;font-weight:600;font-variant-numeric:tabular-nums}
+.vals b{font-size:1rem;font-weight:700;color:var(--navy)}
 .vals small{display:block;font-size:.7rem;color:var(--muted)}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
 .note{font-size:.8rem;color:var(--muted)}
 .mini{width:100%;border-collapse:collapse;font-size:.84rem}
-.mini td{padding:5px 2px;border-bottom:1px solid var(--line);vertical-align:top}
-.mini td.r{text-align:right;font-family:var(--f-mono);white-space:nowrap}
-.mini button{all:unset;cursor:pointer;color:var(--ink)}
-.mini button:hover{color:var(--accent);text-decoration:underline}
+.mini td{padding:7px 2px;border-bottom:1px solid var(--line);vertical-align:top}
+.mini td.r{text-align:right;white-space:nowrap;font-weight:600;color:var(--navy)}
+.mini button{all:unset;cursor:pointer;color:var(--ink);font-weight:500}
+.mini button:hover{color:var(--indigo);text-decoration:underline}
 
 /* tables */
-.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .filters input{flex:1 1 220px}
-.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
-table.t{border-collapse:collapse;width:100%;font-size:.88rem}
-.t th,.t td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
-.t th{font-family:var(--f-mono);font-weight:600;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--sunk);white-space:nowrap;cursor:pointer;user-select:none}
+.tablewrap{overflow-x:auto;border-radius:var(--r-block);background:var(--surface)}
+table.t{border-collapse:collapse;width:100%;font-size:.86rem}
+.t th,.t td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+.t th{font-weight:600;font-size:.78rem;color:var(--navy);background:var(--lav);white-space:nowrap;cursor:pointer;user-select:none}
 .t th[data-k=""]{cursor:default}
 .t th.r,.t td.r{text-align:right}
 .t td.num{white-space:nowrap}
-.t tr:hover td{background:color-mix(in srgb,var(--accent-soft) 45%,transparent)}
+.t td.num b{color:var(--navy)}
+.t tr:hover td{background:var(--sunk)}
 .t .nm{font-weight:600}
-.t .nm small{display:block;font-weight:400;color:var(--muted);font-size:.78rem}
-.linkbtn{all:unset;cursor:pointer;color:var(--accent);text-decoration:underline;text-underline-offset:2px;font-size:.84rem}
-.pager{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:.86rem;color:var(--muted);flex-wrap:wrap}
+.t .nm small{display:block;font-weight:400;color:var(--muted);font-size:.76rem}
+.linkbtn{all:unset;cursor:pointer;color:var(--indigo);text-decoration:underline;text-underline-offset:3px;font-size:.84rem;font-weight:500}
+.pager{display:flex;gap:8px;align-items:center;margin-top:12px;font-size:.84rem;color:var(--muted);flex-wrap:wrap}
 
 /* estimator */
-.estgrid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px}
-.form{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.estgrid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}
+.form{background:var(--surface);border-radius:var(--r-sheet);padding:22px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .form .full{grid-column:1/-1}
-.form label{display:block;font-weight:600;font-size:.88rem;margin-bottom:5px}
+.form label{display:block;font-weight:600;font-size:.86rem;margin-bottom:6px;color:var(--navy)}
 .form input,.form select{width:100%}
-.sheet{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;align-self:start}
-.sheet .total{font-family:var(--f-display);font-size:clamp(1.7rem,3.6vw,2.4rem);font-weight:700;color:var(--accent);margin-top:4px}
-.sheet dl{display:grid;grid-template-columns:1fr auto;gap:6px 14px;margin:12px 0 0;font-size:.92rem}
-.sheet dt{color:var(--muted)} .sheet dd{margin:0;font-family:var(--f-mono);text-align:right}
-.sheet .sub{border-top:1px solid var(--line);padding-top:6px;font-weight:600;color:var(--ink)}
+.sheet{background:var(--navy);color:#fff;border-radius:var(--r-sheet);padding:24px;align-self:start}
+.sheet .eyebrow{color:rgba(255,255,255,.75)}
+.sheet .total{font-size:clamp(1.9rem,3.8vw,2.7rem);font-weight:800;color:#fff;margin-top:4px;letter-spacing:-.02em}
+.sheet .muted,.sheet .note{color:rgba(255,255,255,.72)}
+.sheet dl{display:grid;grid-template-columns:1fr auto;gap:8px 14px;margin:14px 0 0;font-size:.9rem}
+.sheet dt{color:rgba(255,255,255,.75)} .sheet dd{margin:0;text-align:right;font-weight:600}
+.sheet .sub{border-top:1px solid rgba(255,255,255,.22);padding-top:8px;font-weight:700;color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .sheet{background:#2A3488}}
 
-.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
-.cols p,.cols li{font-size:.92rem;color:var(--muted)}
-.cols ul{margin:6px 0 0;padding-left:18px}.cols li{margin-bottom:4px}
-.cols h3{margin-bottom:6px}
-footer{border-top:1px solid var(--line);padding-top:18px;font-size:.84rem;color:var(--muted);display:grid;gap:6px}
+.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.cols>div{background:var(--surface);border-radius:var(--r-block);padding:20px}
+.cols p,.cols li{font-size:.88rem;color:var(--muted)}
+.cols ul{list-style:none;margin:8px 0 0;padding:0}
+.cols li{position:relative;padding-left:30px;margin-bottom:8px}
+.cols li::before{content:"";position:absolute;left:0;top:2px;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--navy);background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231D2675' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12h11M13 7l5 5-5 5'/%3E%3C/svg%3E") center/12px no-repeat}
+.cols h3{margin-bottom:8px}
+#facts .cols>div{background:var(--lav)}
+footer{margin-top:48px;padding:26px 28px;border-radius:var(--r-sheet);background:var(--navy);font-size:.84rem;color:rgba(255,255,255,.8);display:grid;gap:8px}
+footer a{color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) footer{background:#171B47}}
 .loading{padding:40px;text-align:center;color:var(--muted)}
 
-@media (max-width:1000px){ .app,.hero,.estgrid{grid-template-columns:minmax(0,1fr)} .panel{position:static;max-height:none} .cols{grid-template-columns:minmax(0,1fr)} .top .sib{margin-left:0} #map{height:62vh} }
+@media (max-width:1000px){ .app,.hero,.estgrid{grid-template-columns:minmax(0,1fr)} .panel{position:static;max-height:none} .cols{grid-template-columns:minmax(0,1fr)} .top .sib{margin-left:0} #map,#mbmap{height:62vh}
+  .trio-head{display:none} .trow{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:640px){ .hero .kicker{padding-right:62px} .nav{flex-wrap:nowrap;overflow-x:auto;width:100%;scrollbar-width:none} .nav a{white-space:nowrap} .nav::-webkit-scrollbar{display:none} .top .sib{display:none} .hero{padding:28px 20px 22px} .pintile{width:52px;height:52px;top:16px;right:16px} .tbody{grid-template-columns:minmax(0,1fr)} .tbody ul+ul{border-left:0;border-top:1.5px solid color-mix(in srgb,var(--navy) 30%,transparent)} .trio{padding:14px} }
 @media (max-width:520px){ .form{grid-template-columns:minmax(0,1fr)} .vals{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .legend .row i{width:24px} .legend .lab span{width:24px} .hint{display:none} }
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 </style>
+
 
 
 <!--SEO:HEAD--><meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large"><meta property="og:image" content="https://value.buildocrat.store/og.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://value.buildocrat.store/og.png"><link rel="alternate" type="text/plain" title="LLM summary" href="/llms.txt"><script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "WebSite", "@id": "https://value.buildocrat.store/#website", "url": "https://value.buildocrat.store/", "name": "Nigeria Land Value Book", "publisher": {"@id": "https://value.buildocrat.store/#org"}, "inLanguage": "en-NG"}, {"@type": "Organization", "@id": "https://value.buildocrat.store/#org", "name": "Buildocrat Property Technologies Ltd", "alternateName": "Buildocrat", "url": "https://value.buildocrat.store/", "logo": "https://value.buildocrat.store/og.png", "email": "buildocrat@gmail.com", "telephone": "+2347018024292", "address": {"@type": "PostalAddress", "streetAddress": "No 30 Anthony Enahoro Street", "addressLocality": "Utako, Abuja", "addressCountry": "NG"}, "sameAs": ["https://rates.buildocrat.store/"], "contactPoint": {"@type": "ContactPoint", "contactType": "customer service", "telephone": "+2347018024292", "availableLanguage": ["en"], "url": "https://wa.me/2347018024292"}}, {"@type": "Dataset", "@id": "https://value.buildocrat.store/#dataset", "name": "Nigeria Land Value Book", "url": "https://value.buildocrat.store/", "description": "Weekly land, building and rental values for all 37 states, 774 LGAs and 293,775 places in Nigeria: residential, commercial, industrial and farmland per m² or hectare, house prices, rents, yields and economic-status zones.", "keywords": ["land prices Nigeria", "land value per square metre", "plot of land price", "Lagos land prices", "Abuja land prices", "rent Nigeria", "house prices Nigeria", "farmland price per hectare", "LGA"], "creator": {"@id": "https://value.buildocrat.store/#org"}, "publisher": {"@id": "https://value.buildocrat.store/#org"}, "license": "https://creativecommons.org/licenses/by/4.0/", "isAccessibleForFree": true, "dateModified": "2026-10-06", "temporalCoverage": "2026-10-06", "spatialCoverage": {"@type": "Place", "name": "Nigeria", "geo": {"@type": "GeoShape", "box": "4.2 2.6 13.9 14.7"}}, "variableMeasured": ["Residential land value per m²", "Commercial land value per m²", "Industrial land value per m²", "Farmland value per hectare", "House asking price", "Annual rent", "Gross rental yield"], "distribution": [{"@type": "DataDownload", "encodingFormat": "text/csv", "contentUrl": "https://value.buildocrat.store/data/state-values.csv"}, {"@type": "DataDownload", "encodingFormat": "text/csv", "contentUrl": "https://value.buildocrat.store/data/lga-values.csv"}, {"@type": "DataDownload", "encodingFormat": "text/csv", "contentUrl": "https://value.buildocrat.store/data/place-values.csv"}]}, {"@type": "WebApplication", "name": "Nigeria Land Value Book", "url": "https://value.buildocrat.store/", "applicationCategory": "BusinessApplication", "operatingSystem": "Any", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "NGN"}}, {"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "How much is a plot of land in Lagos?", "acceptedAnswer": {"@type": "Answer", "text": "In October 2026, residential land in Lagos runs from about ₦27,000 per m² in rural parts of the state to LGA medians of ₦679,000 in Ikeja, ₦508,000 in Lagos Mainland, ₦504,000 in Eti Osa. A 600 m² plot at the Ikeja median is about ₦407.4m; in outer LGAs such as Ibeju Lekki (₦18.1m), Badagry (₦7.6m), Epe (₦7.2m) it is far less. See value.buildocrat.store/lagos/ for every LGA."}}, {"@type": "Question", "name": "How much is a plot of land in Abuja?", "acceptedAnswer": {"@type": "Answer", "text": "Across the FCT, residential land averages about ₦329,000 per m² near the city, about ₦197.4m for a 600 m² plot, and much more in Maitama, Asokoro and Guzape. See value.buildocrat.store/abuja/."}}, {"@type": "Question", "name": "Where is the most expensive land in Nigeria?", "acceptedAnswer": {"@type": "Answer", "text": "The highest residential land values are in Ikeja (Lagos, about ₦679,000 per m²), Lagos Mainland (Lagos, about ₦508,000 per m²), Eti Osa (Lagos, about ₦504,000 per m²), Apapa (Lagos, about ₦412,000 per m²)."}}, {"@type": "Question", "name": "Where is the cheapest land in Nigeria?", "acceptedAnswer": {"@type": "Answer", "text": "Among state capitals, land is cheapest in Maiduguri (Borno, about ₦2,710 per m²), Sokoto (Sokoto, about ₦3,580 per m²), Yola (Adamawa, about ₦4,370 per m²), Birnin Kebbi (Kebbi, about ₦4,460 per m²), Damaturu (Yobe, about ₦4,670 per m²). Village and farmland is cheaper still."}}, {"@type": "Question", "name": "How do I check the value of a piece of land in Nigeria?", "acceptedAnswer": {"@type": "Answer", "text": "Open value.buildocrat.store, type the town, estate or coordinates, or click the plot on the satellite map. It shows residential, commercial, industrial and farmland values, house prices, rents and the NIPOST postcode for that spot. For lending, sale or court purposes, commission an ESVARBON-registered valuer."}}, {"@type": "Question", "name": "How much is farmland per hectare in Nigeria?", "acceptedAnswer": {"@type": "Answer", "text": "Farmland is typically priced per hectare; state medians in the book run from about ₦2m to ₦73.3m per hectare in October 2026, depending on the state and distance to towns."}}]}]}</script><!--/SEO:HEAD-->
@@ -214,11 +278,11 @@ footer{border-top:1px solid var(--line);padding-top:18px;font-size:.84rem;color:
 <main class="wrap" id="top">
   <div class="hero">
     <div>
-      <p class="eyebrow">Weekly edition · <span id="edDate">October 2026</span> · Naira at ₦<span id="edFx">1,333</span> to the US dollar</p>
-      <h1>Nigeria Land Value Book</h1>
-      <p class="lede">Land, building and rental values for <strong>every state, all 774 local government areas</strong> and <strong><span id="hPlaces">every mapped</span> cities, towns, villages, districts, neighbourhoods and gated estates</strong>. Land by use and economic zone, house prices, building costs and rents, built from <strong><span id="hListings">tens of thousands of</span> live listings</strong> and a spatial model that fills the gaps.</p>
+      <p class="kicker">Nigeria Land Value Book, week of <span id="edDate">October 2026</span></p>
+      <h1>Land values across Nigeria</h1>
+      <p class="lede">Land, building and rental values for <strong>every state, all 774 local government areas</strong> and <strong><span id="hPlaces">every mapped</span> cities, towns, villages, districts, neighbourhoods and gated estates</strong>, built from <strong><span id="hListings">tens of thousands of</span> live listings</strong> and updated every week. Naira at ₦<span id="edFx">1,333</span> to the US dollar.</p>
       <div class="searchbox">
-        <input id="q" type="search" autocomplete="off" placeholder="Search any state, LGA, town, village or neighbourhood" aria-label="Search places" aria-controls="sugg" aria-autocomplete="list">
+        <input id="q" type="search" autocomplete="off" placeholder="Search a state, LGA, town, estate or postcode" aria-label="Search places" aria-controls="sugg" aria-autocomplete="list">
         <ul class="sugg" id="sugg" role="listbox" hidden></ul>
       </div>
     </div>
@@ -227,9 +291,21 @@ footer{border-top:1px solid var(--line);padding-top:18px;font-size:.84rem;color:
       <div><b>774</b><span>local government areas</span></div>
       <div><b id="sWards">–</b><span>wards</span></div>
       <div><b id="sPlaces">–</b><span>settlements valued</span></div>
-      <div><b id="sListings">–</b><span>listings analysed, week of <span id="sDate">–</span></span></div>
+      <div><b id="sListings">–</b><span>listings, week of <span id="sDate">–</span></span></div>
       <div><b id="sEv">–</b><span>market locations with land listings</span></div>
     </div>
+    <a class="pintile" href="#pinform" title="Drop a pin by coordinates" aria-label="Drop a pin by coordinates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3l6 6-3 1-4 4 1 4-2 2-4-4-5 5M9 11l4 4M15 3l-2 3 5 5 3-2"/></svg></a>
+  </div>
+
+  <div class="trio" aria-label="Three values for any spot">
+    <div class="trio-head" aria-hidden="true">
+      <div class="ic"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="24" cy="24" r="14"/><circle cx="24" cy="24" r="7"/><circle cx="24" cy="24" r="1.5"/><path d="M24 4v8M24 36v8M4 24h8M36 24h8"/></svg><span class="eyebrow">Value</span></div>
+      <div class="ic"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 30l10-12 9 9 7-7 10 10"/><circle cx="34" cy="13" r="4"/><rect x="4" y="6" width="40" height="36" rx="4"/></svg><span class="eyebrow">What you see</span></div>
+      <div class="ic"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="10" y="7" width="28" height="36" rx="3"/><path d="M18 7v-2h12v2"/><path d="M16 18h16M16 25h16M16 32h10"/></svg><span class="eyebrow">How to use it</span></div>
+    </div>
+    <div class="trow "><button class="tlead" type="button" data-tab="land"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 36l10-6 16 6 10-6V12l-10 6-16-6-10 6z"/><path d="M16 12v18M32 18v18"/><path d="M24 8a5 5 0 0 1 5 5c0 4-5 8-5 8s-5-4-5-8a5 5 0 0 1 5-5z"/></svg><strong>Land value</strong><span>Residential, commercial, industrial and farmland, per m² and per plot.</span><em>Show on the map</em></button><div class="tbody"><ul><li>Price per m² and for a typical plot at any spot you click</li><li>Commercial, industrial and farmland rates side by side</li><li>Its economic zone, from prime to village or remote farmland</li></ul><ul><li>Check an asking price before you go to inspect</li><li>Compare plots across towns, districts and gated estates</li><li>Drop a pin or paste a Google Maps link to value a plot</li></ul></div></div>
+    <div class="trow coral"><button class="tlead" type="button" data-tab="bld"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22L24 8l18 14"/><path d="M11 18v22h26V18"/><path d="M20 40V28h8v12"/></svg><strong>Building value</strong><span>House and flat prices, value per m² of floor and the cost to build new.</span><em>Show on the map</em></button><div class="tbody"><ul><li>Asking prices from 2-bedroom flats to 5-bedroom houses</li><li>Value per m² of floor beside the cost to build new</li><li>How much of a house’s price is the land under it</li></ul><ul><li>Test whether a house is fairly priced</li><li>Decide between buying a house and building one</li><li>Value land and building together in the estimator</li></ul></div></div>
+    <div class="trow deep"><button class="tlead" type="button" data-tab="rent"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="16" cy="30" r="8"/><path d="M22 25l18-17M34 14l5 5M30 18l4 4"/></svg><strong>Rental value</strong><span>Rents for flats, houses, shops and offices, with the gross yield.</span><em>Show on the map</em></button><div class="tbody"><ul><li>Yearly rent for 1-bedroom to 4-bedroom homes</li><li>Shop and office rent per m² a year</li><li>Gross yield on the asking price</li></ul><ul><li>Set or check a rent before you sign</li><li>Compare yields across areas before you invest</li><li>Ask us on WhatsApp about a specific property</li></ul></div></div>
   </div>
 
   <section id="mapsec">
@@ -351,6 +427,8 @@ footer{border-top:1px solid var(--line);padding-top:18px;font-size:.84rem;color:
 
   
 
+  
+
   <!--SEO:BODY--><section id="facts"><div class="sec-head"><div><p class="eyebrow">At a glance, October 2026</p><h2>Land prices in Nigeria by state</h2><p>Residential land in each state capital per m², a typical 600 m² plot and a year's rent for a 3-bedroom flat. Every state, all 774 LGAs and 2,507 towns, districts and gated estates have their own page: <a href="/lgas/">all LGAs</a> · <a href="/places/">towns and estates</a> · <a href="/faq/">questions and answers</a> · <a href="/about/">method</a> · <a href="/data/lga-values.csv">download the data</a>.</p></div></div><div class="tablewrap"><table class="t"><thead><tr><th>State</th><th>Capital</th><th class="r">Land ₦/m²</th><th class="r">600 m² plot</th><th class="r">Rent 3-bed</th></tr></thead><tbody><tr><td><a href="/abia/">Abia</a></td><td>Umuahia</td><td class="r">₦23,200</td><td class="r">₦13.9m</td><td class="r">₦1.6m</td></tr><tr><td><a href="/adamawa/">Adamawa</a></td><td>Yola</td><td class="r">₦4,370</td><td class="r">₦2.6m</td><td class="r">₦955,000</td></tr><tr><td><a href="/akwa-ibom/">Akwa Ibom</a></td><td>Uyo</td><td class="r">₦36,300</td><td class="r">₦21.8m</td><td class="r">₦2.8m</td></tr><tr><td><a href="/anambra/">Anambra</a></td><td>Awka</td><td class="r">₦16,100</td><td class="r">₦9.7m</td><td class="r">₦1.4m</td></tr><tr><td><a href="/bauchi/">Bauchi</a></td><td>Bauchi</td><td class="r">₦8,780</td><td class="r">₦5.3m</td><td class="r">₦1.3m</td></tr><tr><td><a href="/bayelsa/">Bayelsa</a></td><td>Yenagoa</td><td class="r">₦8,800</td><td class="r">₦5.3m</td><td class="r">₦1.3m</td></tr><tr><td><a href="/benue/">Benue</a></td><td>Makurdi</td><td class="r">₦10,100</td><td class="r">₦6.1m</td><td class="r">₦1.6m</td></tr><tr><td><a href="/borno/">Borno</a></td><td>Maiduguri</td><td class="r">₦2,710</td><td class="r">₦1.6m</td><td class="r">₦785,000</td></tr><tr><td><a href="/cross-river/">Cross River</a></td><td>Calabar</td><td class="r">₦16,900</td><td class="r">₦10.1m</td><td class="r">₦2m</td></tr><tr><td><a href="/delta/">Delta</a></td><td>Asaba</td><td class="r">₦20,200</td><td class="r">₦12.1m</td><td class="r">₦1.7m</td></tr><tr><td><a href="/ebonyi/">Ebonyi</a></td><td>Abakaliki</td><td class="r">₦10,200</td><td class="r">₦6.1m</td><td class="r">₦1.2m</td></tr><tr><td><a href="/edo/">Edo</a></td><td>Benin City</td><td class="r">₦22,600</td><td class="r">₦13.6m</td><td class="r">₦1.3m</td></tr><tr><td><a href="/ekiti/">Ekiti</a></td><td>Ado Ekiti</td><td class="r">₦8,180</td><td class="r">₦4.9m</td><td class="r">₦1.4m</td></tr><tr><td><a href="/enugu/">Enugu</a></td><td>Enugu</td><td class="r">₦57,200</td><td class="r">₦34.3m</td><td class="r">₦1.4m</td></tr><tr><td><a href="/abuja/">FCT, Abuja</a></td><td>Abuja</td><td class="r">₦329,000</td><td class="r">₦197.4m</td><td class="r">₦10.5m</td></tr><tr><td><a href="/gombe/">Gombe</a></td><td>Gombe</td><td class="r">₦5,820</td><td class="r">₦3.5m</td><td class="r">₦1.1m</td></tr><tr><td><a href="/imo/">Imo</a></td><td>Owerri</td><td class="r">₦21,100</td><td class="r">₦12.7m</td><td class="r">₦1.2m</td></tr><tr><td><a href="/jigawa/">Jigawa</a></td><td>Dutse</td><td class="r">₦12,400</td><td class="r">₦7.4m</td><td class="r">₦2.9m</td></tr><tr><td><a href="/kaduna/">Kaduna</a></td><td>Kaduna</td><td class="r">₦17,800</td><td class="r">₦10.7m</td><td class="r">₦2.1m</td></tr><tr><td><a href="/kano/">Kano</a></td><td>Kano</td><td class="r">₦87,400</td><td class="r">₦52.4m</td><td class="r">₦3.3m</td></tr><tr><td><a href="/katsina/">Katsina</a></td><td>Katsina</td><td class="r">₦8,500</td><td class="r">₦5.1m</td><td class="r">₦1.2m</td></tr><tr><td><a href="/kebbi/">Kebbi</a></td><td>Birnin Kebbi</td><td class="r">₦4,460</td><td class="r">₦2.7m</td><td class="r">₦963,000</td></tr><tr><td><a href="/kogi/">Kogi</a></td><td>Lokoja</td><td class="r">₦6,160</td><td class="r">₦3.7m</td><td class="r">₦1.1m</td></tr><tr><td><a href="/kwara/">Kwara</a></td><td>Ilorin</td><td class="r">₦16,600</td><td class="r">₦10m</td><td class="r">₦1.2m</td></tr><tr><td><a href="/lagos/">Lagos</a></td><td>Ikeja</td><td class="r">₦293,000</td><td class="r">₦175.8m</td><td class="r">₦5.3m</td></tr><tr><td><a href="/nasarawa/">Nasarawa</a></td><td>Lafia</td><td class="r">₦17,500</td><td class="r">₦10.5m</td><td class="r">₦1.8m</td></tr><tr><td><a href="/niger/">Niger</a></td><td>Minna</td><td class="r">₦12,200</td><td class="r">₦7.3m</td><td class="r">₦1.5m</td></tr><tr><td><a href="/ogun/">Ogun</a></td><td>Abeokuta</td><td class="r">₦17,300</td><td class="r">₦10.4m</td><td class="r">₦3.7m</td></tr><tr><td><a href="/ondo/">Ondo</a></td><td>Akure</td><td class="r">₦24,000</td><td class="r">₦14.4m</td><td class="r">₦1.9m</td></tr><tr><td><a href="/osun/">Osun</a></td><td>Osogbo</td><td class="r">₦19,400</td><td class="r">₦11.6m</td><td class="r">₦1.2m</td></tr><tr><td><a href="/oyo/">Oyo</a></td><td>Ibadan</td><td class="r">₦98,600</td><td class="r">₦59.2m</td><td class="r">₦3.7m</td></tr><tr><td><a href="/plateau/">Plateau</a></td><td>Jos</td><td class="r">₦13,100</td><td class="r">₦7.9m</td><td class="r">₦2m</td></tr><tr><td><a href="/rivers/">Rivers</a></td><td>Port Harcourt</td><td class="r">₦70,900</td><td class="r">₦42.5m</td><td class="r">₦3.9m</td></tr><tr><td><a href="/sokoto/">Sokoto</a></td><td>Sokoto</td><td class="r">₦3,580</td><td class="r">₦2.1m</td><td class="r">₦881,000</td></tr><tr><td><a href="/taraba/">Taraba</a></td><td>Jalingo</td><td class="r">₦5,360</td><td class="r">₦3.2m</td><td class="r">₦1m</td></tr><tr><td><a href="/yobe/">Yobe</a></td><td>Damaturu</td><td class="r">₦4,670</td><td class="r">₦2.8m</td><td class="r">₦982,000</td></tr><tr><td><a href="/zamfara/">Zamfara</a></td><td>Gusau</td><td class="r">₦8,510</td><td class="r">₦5.1m</td><td class="r">₦1.2m</td></tr></tbody></table></div><div class="cols" style="margin-top:16px"><div><h3>How much is a plot of land in Lagos?</h3><p>In October 2026, residential land in Lagos runs from about ₦27,000 per m² in rural parts of the state to LGA medians of ₦679,000 in Ikeja, ₦508,000 in Lagos Mainland, ₦504,000 in Eti Osa. A 600 m² plot at the Ikeja median is about ₦407.4m; in outer LGAs such as Ibeju Lekki (₦18.1m), Badagry (₦7.6m), Epe (₦7.2m) it is far less. See value.buildocrat.store/lagos/ for every LGA.</p></div><div><h3>How much is a plot of land in Abuja?</h3><p>Across the FCT, residential land averages about ₦329,000 per m² near the city, about ₦197.4m for a 600 m² plot, and much more in Maitama, Asokoro and Guzape. See value.buildocrat.store/abuja/.</p></div><div><h3>Where is the most expensive land in Nigeria?</h3><p>The highest residential land values are in Ikeja (Lagos, about ₦679,000 per m²), Lagos Mainland (Lagos, about ₦508,000 per m²), Eti Osa (Lagos, about ₦504,000 per m²), Apapa (Lagos, about ₦412,000 per m²).</p></div><div><h3>Where is the cheapest land in Nigeria?</h3><p>Among state capitals, land is cheapest in Maiduguri (Borno, about ₦2,710 per m²), Sokoto (Sokoto, about ₦3,580 per m²), Yola (Adamawa, about ₦4,370 per m²), Birnin Kebbi (Kebbi, about ₦4,460 per m²), Damaturu (Yobe, about ₦4,670 per m²). Village and farmland is cheaper still.</p></div><div><h3>How do I check the value of a piece of land in Nigeria?</h3><p>Open value.buildocrat.store, type the town, estate or coordinates, or click the plot on the satellite map. It shows residential, commercial, industrial and farmland values, house prices, rents and the NIPOST postcode for that spot. For lending, sale or court purposes, commission an ESVARBON-registered valuer.</p></div><div><h3>How much is farmland per hectare in Nigeria?</h3><p>Farmland is typically priced per hectare; state medians in the book run from about ₦2m to ₦73.3m per hectare in October 2026, depending on the state and distance to towns.</p></div></div></section><!--/SEO:BODY-->
 
   <footer>
@@ -363,6 +441,6 @@ footer{border-top:1px solid var(--line);padding-top:18px;font-size:.84rem;color:
 
 <a class="wa" id="wa" href="https://wa.me/2347018024292?text=Hello%20Buildocrat%2C%20I%27m%20on%20the%20Land%20Value%20Book%20(value.buildocrat.store).%20" target="_blank" rel="noopener" aria-label="Chat with Buildocrat on WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M16 3C9 3 3.3 8.6 3.3 15.6c0 2.2.6 4.4 1.7 6.3L3 29l7.3-1.9c1.8 1 3.8 1.5 5.8 1.5 7 0 12.7-5.7 12.7-12.6C28.8 8.6 23.1 3 16 3zm0 23.2c-1.8 0-3.6-.5-5.2-1.4l-.4-.2-4.3 1.1 1.2-4.2-.3-.4a10.4 10.4 0 0 1-1.6-5.5C5.4 9.8 10.2 5.1 16 5.1s10.6 4.7 10.6 10.5S21.8 26.2 16 26.2zm5.8-7.8c-.3-.2-1.9-.9-2.2-1s-.5-.2-.7.2-.8 1-1 1.2-.4.2-.7.1a8.6 8.6 0 0 1-4.3-3.7c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4s-1.2 1.1-1.2 2.8 1.2 3.2 1.4 3.5 2.4 3.6 5.8 5c2.1.9 3 1 4 .8.6-.1 1.9-.8 2.2-1.5s.3-1.4.2-1.5-.3-.2-.6-.3z"/></svg><span>Chat on WhatsApp</span></a>
 <script src="config.js?v=34ede6d4"></script>
-<script src="app.js?v=1df6d19d"></script>
+<script src="app.js?v=4a52285e"></script>
 </body>
 </html>

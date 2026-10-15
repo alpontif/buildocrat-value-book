@@ -3,18 +3,21 @@
 <title>Buildocrat Value Lens for Chrome</title>
 <meta name="description" content="A Chrome extension that shows land, building and rental values as you hover over Google Maps or OpenStreetMap anywhere in Nigeria.">
 <link rel="canonical" href="https://value.buildocrat.store/extension/">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <style>
-:root{--bg:#ECEDE9;--surface:#F7F7F3;--ink:#16201B;--muted:#56615A;--line:#CDD1C7;--accent:#0E5A4B}
-@media (prefers-color-scheme:dark){:root{--bg:#101513;--surface:#171E1B;--ink:#E6EBE6;--muted:#9BA69F;--line:#2A3430;--accent:#5CC3A4;color-scheme:dark}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Source Sans 3","Segoe UI",Roboto,Arial,sans-serif;padding:0 16px 48px}
-.w{max-width:760px;margin:0 auto}header{padding:14px 0;border-bottom:1px solid var(--line)}header a{color:inherit;text-decoration:none;font-weight:700}
-h1{font:700 clamp(1.8rem,5vw,2.6rem)/1.1 "Familjen Grotesk",Arial,sans-serif;margin:28px 0 10px}h2{font:700 1.2rem Arial,sans-serif;margin:28px 0 8px}
-p,li{color:var(--muted)}b{color:var(--ink)}a{color:var(--accent)}
-.cta{display:inline-block;margin:10px 10px 0 0;padding:11px 18px;border-radius:9px;background:var(--accent);color:#fff;text-decoration:none;font-weight:700}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:16px}
-ol li{margin-bottom:6px}code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9em}
+:root{--bg:#EFEFF3;--surface:#fff;--ink:#22275A;--muted:#5E638E;--line:#D3D6EA;--navy:#1D2675;--lav:#DCDFF2}
+@media (prefers-color-scheme:dark){:root{--bg:#0F1234;--surface:#171B47;--ink:#E7E9FA;--muted:#A3A8D6;--line:#2C3270;--navy:#C9CEFF;--lav:#252B66;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15.5px/1.65 "Poppins","Segoe UI",Arial,sans-serif;padding:0 16px 60px}
+.w{max-width:780px;margin:0 auto}header{padding:14px 0}header a{color:var(--navy);text-decoration:none;font-weight:800}
+.sheet{background:var(--surface);border-radius:22px;padding:34px}
+h1{font:800 clamp(2rem,5vw,3rem)/1.04 "Poppins",Arial,sans-serif;letter-spacing:-.025em;color:var(--navy);margin:0 0 14px}
+h2{display:inline-block;font:600 .9rem/1 "Poppins",Arial,sans-serif;color:#fff;background:#1D2675;padding:9px 18px;border-radius:999px;margin:26px 0 12px}
+p,li{color:var(--muted)}b{color:var(--ink)}a{color:#3C49A1}
+.cta{display:inline-block;margin:10px 10px 0 0;padding:12px 22px;border-radius:999px;background:#1D2675;color:#fff;text-decoration:none;font-weight:700}
+.card{background:var(--lav);border-radius:16px;padding:18px 22px;margin-top:18px}.card h2{margin-top:0}
+ol li{margin-bottom:6px}code{font-family:inherit;font-weight:600;color:var(--navy)}
 </style></head><body><div class="w">
-<header><a href="/">Buildocrat Land Value Book</a></header>
+<header><a href="/">Buildocrat Land Value Book</a></header><div class="sheet">
 <h1>Value Lens for Chrome</h1>
 <p>Hover over <b>Google Maps</b> (map or satellite) or <b>OpenStreetMap</b> anywhere in Nigeria and a small card shows the value at your cursor: land per m² and a typical plot, house prices and build cost, or rents and yields. Hold <b>Shift</b> to pin the card, switch between land, building and rent, and open the full report with the NIPOST postcode.</p>
 <a class="cta" href="buildocrat-value-lens.zip" download>Download the extension (.zip)</a>
@@ -27,4 +30,4 @@ ol li{margin-bottom:6px}code{font-family:ui-monospace,Menlo,Consolas,monospace;f
 <h2>Privacy</h2>
 <p>The extension reads the map position from the page address and your cursor position on the map, and works out the value on your own computer from the Land Value Book's public data files, which it downloads from value.buildocrat.store. It sends nothing about you, your browsing or your location anywhere, stores only your on/off and tab choice, and runs only on Google Maps and OpenStreetMap.</p>
 <p>Values are indicative asking prices for screening and negotiation, not a valuation report.</p>
-</div></body></html>
+</div></div></body></html>

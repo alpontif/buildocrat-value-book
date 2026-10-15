@@ -5,7 +5,7 @@ const TYPEN=['City','Town','District','Area','Neighbourhood','Village','Hamlet',
 const URBAN_T=new Set([0,1,2,3,4,8,9]);
 const DRANK=[0,1,2,3,4,5,6,7,4,4]; // map display order: estates appear with neighbourhoods
 const RURAL_T=t=>t===5||t===6||t===7;
-const ZONEC=['#7a1fa2','#c2410c','#d99a00','#3f8f5a','#2f6f9f','#7d8f69','#b9a77a'];
+const ZONEC=['#1D2675','#3C49A1','#7D87CA','#B7BCE6','#E8725B','#F2A28E','#CDB9A6'];
 const CONF=[['H','High','Market data: 30+ listings close by'],['M','Medium','Market data: 8\u201329 listings close by'],['L','Low','A few listings close by, mostly modelled'],['X','Modelled','No listings within reach; modelled from the LGA, state and settlement pattern']];
 let FX=1333, BUILD=367748;
 const TABS={
@@ -212,6 +212,7 @@ function setTab(t){
   buildLayers(); legend(); MAPI.refresh(); if(RER) RER(); if(TBL) TBL();
 }
 $('tabs').addEventListener('click',e=>{ const b=e.target.closest('[role=tab]'); if(b) setTab(b.dataset.t); });
+document.querySelectorAll('.tlead[data-tab]').forEach(b=>b.addEventListener('click',()=>{ setTab(b.dataset.tab); $('mapsec').scrollIntoView(); }));
 $('tabs').addEventListener('keydown',e=>{ if(e.key!=='ArrowRight'&&e.key!=='ArrowLeft') return; const k=Object.keys(TABS); const n=k[(k.indexOf(TAB)+(e.key==='ArrowRight'?1:k.length-1))%k.length]; setTab(n); $('tabs').querySelector(`[data-t="${n}"]`).focus(); });
 function legend(){ const L=LAYERS.find(l=>l[0]===layer);
   if(layer==='zone'){ $('legend').innerHTML=`<div>Economic zones (dots); LGAs by their typical zone</div><div class="zleg">${(META.zones||[]).map((z,i)=>`<span><i style="background:${ZONEC[i]}"></i>${esc(z)}</span>`).join('')}</div>`; return; }

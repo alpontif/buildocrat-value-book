@@ -18,21 +18,21 @@
   hostEl.style.cssText = 'position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none';
   const root = hostEl.attachShadow({ mode: 'closed' });
   root.innerHTML = `<style>
-    .c{position:fixed;min-width:230px;max-width:290px;background:#F7F7F3;color:#16201B;border:1px solid #CDD1C7;border-radius:12px;box-shadow:0 10px 28px rgba(0,0,0,.22);
-       font:13px/1.4 "Segoe UI",Roboto,Arial,sans-serif;padding:10px 12px;pointer-events:none}
-    .c.pin{pointer-events:auto;border-color:#0E5A4B;box-shadow:0 0 0 2px #0E5A4B33,0 10px 28px rgba(0,0,0,.22)}
-    .k{font:600 10px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:#56615A}
-    .h{font:700 22px/1.1 Arial,sans-serif;color:#0E5A4B;margin:3px 0 1px}
-    .u{color:#56615A;font-size:12px}
+    .c{position:fixed;min-width:230px;max-width:290px;background:#FFFFFF;color:#22275A;border:1px solid #D3D6EA;border-radius:16px;box-shadow:0 10px 28px rgba(0,0,0,.22);
+       font:13px/1.4 "Poppins","Segoe UI",Roboto,Arial,sans-serif;padding:10px 12px;pointer-events:none}
+    .c.pin{pointer-events:auto;border-color:#1D2675;box-shadow:0 0 0 2px #1D267533,0 10px 28px rgba(0,0,0,.22)}
+    .k{font:600 10px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:#5E638E}
+    .h{font:700 22px/1.1 Arial,sans-serif;color:#1D2675;margin:3px 0 1px}
+    .u{color:#5E638E;font-size:12px}
     .g{display:grid;grid-template-columns:1fr auto;gap:2px 10px;margin-top:7px;font-size:12px}
     .g b{font:600 12px ui-monospace,Menlo,Consolas,monospace;text-align:right}
-    .w{margin-top:7px;padding-top:6px;border-top:1px solid #CDD1C7;font-size:11.5px;color:#56615A}
+    .w{margin-top:7px;padding-top:6px;border-top:1px solid #D3D6EA;font-size:11.5px;color:#5E638E}
     .z{display:inline-block;margin-left:6px;font:600 10px ui-monospace,monospace;border:1px solid currentColor;border-radius:99px;padding:0 6px;vertical-align:2px}
-    .t{display:flex;gap:4px;margin-top:8px}.t button{flex:1;font:600 11px Arial,sans-serif;border:1px solid #0E5A4B;background:transparent;color:#0E5A4B;border-radius:6px;padding:4px 0;cursor:pointer}
-    .t button[aria-pressed="true"]{background:#0E5A4B;color:#fff}
-    a{color:#0E5A4B;font-weight:600}
-    .m{color:#56615A;font-size:12px}
-    @media (prefers-color-scheme:dark){.c{background:#171E1B;color:#E6EBE6;border-color:#2A3430}.k,.u,.w,.m{color:#9BA69F}.h,a{color:#5CC3A4}.w{border-color:#2A3430}.t button{border-color:#5CC3A4;color:#5CC3A4}.t button[aria-pressed="true"]{background:#5CC3A4;color:#08201A}}
+    .t{display:flex;gap:4px;margin-top:8px}.t button{flex:1;font:600 11px Arial,sans-serif;border:1px solid #1D2675;background:transparent;color:#1D2675;border-radius:6px;padding:4px 0;cursor:pointer}
+    .t button[aria-pressed="true"]{background:#1D2675;color:#fff}
+    a{color:#1D2675;font-weight:600}
+    .m{color:#5E638E;font-size:12px}
+    @media (prefers-color-scheme:dark){.c{background:#171B47;color:#E7E9FA;border-color:#2C3270}.k,.u,.w,.m{color:#A3A8D6}.h,a{color:#C9CEFF}.w{border-color:#2C3270}.t button{border-color:#C9CEFF;color:#C9CEFF}.t button[aria-pressed="true"]{background:#C9CEFF;color:#0F1234}}
   </style><div class="c" hidden></div>`;
   const card = root.querySelector('.c');
   (document.body || document.documentElement).appendChild(hostEl);

@@ -38,22 +38,33 @@ ORG = {"@type": "Organization", "@id": SITE + "#org", "name": "Buildocrat Proper
 
 def wa_link(text): return f'https://wa.me/{WA}?text=' + urllib.parse.quote(text)
 
-CSS = """:root{--bg:#ECEDE9;--surface:#F7F7F3;--ink:#16201B;--muted:#56615A;--line:#CDD1C7;--accent:#0E5A4B}
-@media (prefers-color-scheme:dark){:root{--bg:#101513;--surface:#171E1B;--ink:#E6EBE6;--muted:#9BA69F;--line:#2A3430;--accent:#5CC3A4;color-scheme:dark}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Source Sans 3","Segoe UI",Roboto,Arial,sans-serif;padding:0 16px 96px}
-.w{max-width:920px;margin:0 auto}a{color:var(--accent)}header{padding:14px 0;border-bottom:1px solid var(--line);display:flex;gap:6px 16px;flex-wrap:wrap;align-items:baseline}
-header b{font:700 1.1rem "Familjen Grotesk",Arial,sans-serif}h1{font:700 clamp(1.7rem,4vw,2.4rem)/1.1 "Familjen Grotesk",Arial,sans-serif;margin:24px 0 8px}
-h2{font:700 1.25rem "Familjen Grotesk",Arial,sans-serif;margin:28px 0 8px}h3{font-size:1.02rem;margin:16px 0 4px}.lede{color:var(--muted);max-width:68ch}
-.cta{display:inline-block;margin:14px 10px 0 0;padding:10px 16px;border-radius:8px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600}
-.cta.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:.95rem}
-td,th{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
-th{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}.wrapt{overflow-x:auto}
-.faq p{color:var(--muted);margin:0 0 6px}.cols{columns:3 220px;column-gap:24px}.cols a{display:block;break-inside:avoid;padding:2px 0}
-footer{margin-top:32px;font-size:.85rem;color:var(--muted)}
-.wa{position:fixed;right:16px;bottom:16px;z-index:50;display:inline-flex;align-items:center;gap:8px;background:#25D366;color:#073b1c;font:700 15px Arial,sans-serif;
- padding:12px 16px 12px 14px;border-radius:999px;text-decoration:none;box-shadow:0 8px 24px rgba(0,0,0,.25)}.wa svg{width:22px;height:22px}
-@media (max-width:520px){.wa span{display:none}.wa{padding:13px}}"""
+CSS = """:root{--bg:#EFEFF3;--surface:#FFFFFF;--sunk:#EEF0F9;--ink:#22275A;--muted:#5E638E;--line:#D3D6EA;--navy:#1D2675;--indigo:#3C49A1;--lav:#DCDFF2;--coral:#E8725B;--peach:#F8DDD4}
+@media (prefers-color-scheme:dark){:root{--bg:#0F1234;--surface:#171B47;--sunk:#1F2458;--ink:#E7E9FA;--muted:#A3A8D6;--line:#2C3270;--navy:#C9CEFF;--indigo:#8D97F0;--lav:#252B66;--coral:#F08A73;--peach:#3A2730;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15.5px/1.65 "Poppins","Segoe UI",Roboto,Arial,sans-serif;padding:0 16px 110px;font-variant-numeric:tabular-nums}
+.w{max-width:960px;margin:0 auto}a{color:var(--indigo);text-underline-offset:3px}
+header{padding:14px 0;display:flex;gap:6px 18px;flex-wrap:wrap;align-items:center;font-size:.86rem}
+header>a{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--navy)}
+header>a::before{content:"";width:28px;height:28px;border-radius:8px;background:#1D2675 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z'/%3E%3Ccircle cx='12' cy='11' r='2.2'/%3E%3C/svg%3E") center/17px no-repeat}
+header b{font-weight:800;font-size:1rem}header nav{color:var(--muted)}
+main{background:var(--surface);border-radius:22px;padding:34px 34px 30px;margin-top:6px}
+h1{font:800 clamp(1.9rem,4.6vw,3rem)/1.04 "Poppins",Arial,sans-serif;letter-spacing:-.025em;color:var(--navy);margin:0 0 14px}
+h2{display:inline-block;font:600 .9rem/1 "Poppins",Arial,sans-serif;color:#fff;background:var(--navy);padding:9px 18px;border-radius:999px;margin:34px 0 14px}
+@media (prefers-color-scheme:dark){h2{color:#0F1234}}
+h3{font-size:1rem;font-weight:700;color:var(--navy);margin:18px 0 4px}.lede{color:var(--muted);max-width:68ch}.lede b{color:var(--ink)}
+.cta{display:inline-block;margin:16px 10px 0 0;padding:11px 20px;border-radius:999px;background:var(--navy);color:#fff;text-decoration:none;font-weight:600;font-size:.92rem}
+@media (prefers-color-scheme:dark){.cta{color:#0F1234}}
+.cta.ghost{background:transparent;color:var(--navy);border:1.5px solid var(--navy)}
+table{width:100%;border-collapse:collapse;border-radius:16px;overflow:hidden;font-size:.92rem;background:var(--sunk)}
+td,th{padding:10px 14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}td.r,th.r{text-align:right}td.r b{color:var(--navy)}
+th{font-size:.8rem;font-weight:600;color:var(--navy);background:var(--lav)}.wrapt{overflow-x:auto;border-radius:16px}
+.faq h3{position:relative;padding-left:32px}.faq h3::before{content:"";position:absolute;left:0;top:1px;width:21px;height:21px;border-radius:50%;border:1.5px solid var(--navy);background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231D2675' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12h11M13 7l5 5-5 5'/%3E%3C/svg%3E") center/12px no-repeat}
+@media (prefers-color-scheme:dark){.faq h3::before{border-color:#C9CEFF;filter:brightness(2.4)}}
+.faq p{color:var(--muted);margin:0 0 8px 32px}
+.cols{columns:3 220px;column-gap:26px;background:var(--sunk);border-radius:16px;padding:16px 20px}.cols a{display:block;break-inside:avoid;padding:3px 0;text-decoration:none;font-weight:500}.cols a:hover{text-decoration:underline}
+footer{margin-top:18px;padding:22px 26px;border-radius:22px;background:#1D2675;font-size:.84rem;color:rgba(255,255,255,.8)}footer a{color:#fff}
+.wa{position:fixed;right:18px;bottom:18px;z-index:50;display:inline-flex;align-items:center;gap:8px;background:#25D366;color:#073b1c;font:700 15px "Poppins",Arial,sans-serif;
+ padding:12px 18px 12px 14px;border-radius:999px;text-decoration:none;box-shadow:0 10px 26px rgba(14,20,80,.28)}.wa svg{width:22px;height:22px}
+@media (max-width:640px){main{padding:24px 18px}.wa span{display:none}.wa{padding:13px}}"""
 WA_SVG = '<svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M16 3C9 3 3.3 8.6 3.3 15.6c0 2.2.6 4.4 1.7 6.3L3 29l7.3-1.9c1.8 1 3.8 1.5 5.8 1.5 7 0 12.7-5.7 12.7-12.6C28.8 8.6 23.1 3 16 3zm0 23.2c-1.8 0-3.6-.5-5.2-1.4l-.4-.2-4.3 1.1 1.2-4.2-.3-.4a10.4 10.4 0 0 1-1.6-5.5C5.4 9.8 10.2 5.1 16 5.1s10.6 4.7 10.6 10.5S21.8 26.2 16 26.2zm5.8-7.8c-.3-.2-1.9-.9-2.2-1s-.5-.2-.7.2-.8 1-1 1.2-.4.2-.7.1a8.6 8.6 0 0 1-4.3-3.7c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4s-1.2 1.1-1.2 2.8 1.2 3.2 1.4 3.5 2.4 3.6 5.8 5c2.1.9 3 1 4 .8.6-.1 1.9-.8 2.2-1.5s.3-1.4.2-1.5-.3-.2-.6-.3z"/></svg>'
 def wa_button(text, label='Chat on WhatsApp'):
     return f'<a class="wa" href="{e(wa_link(text))}" target="_blank" rel="noopener" aria-label="{label} with Buildocrat">{WA_SVG}<span>{label}</span></a>'
@@ -73,9 +84,11 @@ def page(path, title, desc, body, crumbs, extra_ld=(), wa_text=None):
 <meta property="og:type" content="website"><meta property="og:site_name" content="Buildocrat Land Value Book"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(desc)}"><meta property="og:url" content="{canon}"><meta property="og:image" content="{SITE}og.png">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{e(title)}"><meta name="twitter:description" content="{e(desc)}"><meta name="twitter:image" content="{SITE}og.png">
 <link rel="alternate" type="text/plain" title="LLM summary" href="/llms.txt">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script><style>{CSS}</style></head><body><div class="w">
-<header><a href="/" style="text-decoration:none;color:inherit"><b>Buildocrat Land Value Book</b></a><nav>{' › '.join(f'<a href="/{u}">{e(n)}</a>' for n, u in crumbs[:-1])}</nav></header>
-{body}
+<header><a href="/"><b>Buildocrat Land Value Book</b></a><nav>{' › '.join(f'<a href="/{u}">{e(n)}</a>' for n, u in crumbs[:-1])}</nav></header>
+<main>{body}</main>
 <footer><p>Indicative asking-price values from listings read in the week of {DLONG}, updated every week. Not a valuation report; for lending, sale or court use, commission an ESVARBON-registered valuer.
 Published by Buildocrat Property Technologies Ltd (RC 7019619), Utako, Abuja, alongside the <a href="https://rates.buildocrat.store/">Nigeria Construction Rate Book</a>.
 WhatsApp <a href="https://wa.me/{WA}">+234 701 802 4292</a> · <a href="/faq/">FAQ</a> · <a href="/about/">About and method</a> · <a href="/lgas/">All LGAs</a> · <a href="/places/">Towns and estates</a></p></footer></div>
