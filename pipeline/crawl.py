@@ -22,7 +22,7 @@ STATES = ['abia','abuja','adamawa','akwa-ibom','anambra','bauchi','bayelsa','ben
           'ondo','osun','oyo','plateau','rivers','sokoto','taraba','yobe','zamfara']
 
 S = requests.Session()
-S.headers.update({'User-Agent': C.get('user_agent', 'Mozilla/5.0 (compatible; BuildocratLandBook/1.0; +https://land.buildocrat.store/)'),
+S.headers.update({'User-Agent': C.get('user_agent', 'Mozilla/5.0 (compatible; BuildocratLandBook/1.0; +https://value.buildocrat.store/)'),
                   'Accept-Language': 'en-NG,en;q=0.9'})
 
 def get(url, kind='html', tries=3):

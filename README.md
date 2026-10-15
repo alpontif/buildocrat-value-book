@@ -2,7 +2,7 @@
 
 Land values, rents and house prices for every Nigerian state, all 774 LGAs and about 293,000 towns, villages and neighbourhoods, on a Mapbox satellite map with live NIPOST postcodes. Sister site of the [Construction Rate Book](https://rates.buildocrat.store/).
 
-Live at **https://land.buildocrat.store/** (served by GitHub Pages from `docs/`).
+Live at **https://value.buildocrat.store/** (served by GitHub Pages from `docs/`).
 
 ## How it fits together
 
@@ -25,9 +25,9 @@ Live at **https://land.buildocrat.store/** (served by GitHub Pages from `docs/`)
 1. **Repository.** Create a public GitHub repo (e.g. `alpontif/buildocrat-land-book`) and push this folder to `main`.
 2. **GitHub Pages.** Settings → Pages → Source: *Deploy from a branch* → `main` / `/docs`. Tick *Enforce HTTPS* once the certificate is issued.
 3. **Actions permissions.** Settings → Actions → General → Workflow permissions: *Read and write*.
-4. **Domain.** At your DNS host for `buildocrat.store`, add `CNAME  land  →  alpontif.github.io` (same as `rates`). `docs/CNAME` already says `land.buildocrat.store`; change `domain` in `site-config.json` if you pick another name, then run `python pipeline/pages.py`.
-5. **Mapbox.** Create a free account at mapbox.com → Tokens → *Create a token*: public scopes only, URL restrictions `https://land.buildocrat.store` (add `http://localhost:8765` for local testing). Paste the `pk.…` token into `mapbox_token`. Free tier: 50,000 map loads a month.
-6. **NIPOST.** At dashboard.postcode.gov.ng create the organisation, complete KYB, then Settings → API Keys → *Publishable*: scopes `search` (and `lookup` for postcode checks), allowed origin `https://land.buildocrat.store`. Paste the `nipost_pk_live_…` key into `nipost_publishable_key`. Reverse lookups (`/v1/search/reverse`) and level-1 postcode checks are free.
+4. **Domain.** At your DNS host for `buildocrat.store`, add `CNAME  value  →  alpontif.github.io` (same as `rates`). `docs/CNAME` already says `value.buildocrat.store`; change `domain` in `site-config.json` if you pick another name, then run `python pipeline/pages.py`.
+5. **Mapbox.** Create a free account at mapbox.com → Tokens → *Create a token*: public scopes only, URL restrictions `https://value.buildocrat.store` (add `http://localhost:8765` for local testing). Paste the `pk.…` token into `mapbox_token`. Free tier: 50,000 map loads a month.
+6. **NIPOST.** At dashboard.postcode.gov.ng create the organisation, complete KYB, then Settings → API Keys → *Publishable*: scopes `search` (and `lookup` for postcode checks), allowed origin `https://value.buildocrat.store`. Paste the `nipost_pk_live_…` key into `nipost_publishable_key`. Reverse lookups (`/v1/search/reverse`) and level-1 postcode checks are free.
 7. Run `python pipeline/refresh.py --no-crawl` (or the workflow with *crawl* unticked) so `docs/config.js` picks up the keys, then commit.
 
 Without a Mapbox token the site still works with the built-in plain map; without a NIPOST key it shows the state prefix and links to postcode.gov.ng.

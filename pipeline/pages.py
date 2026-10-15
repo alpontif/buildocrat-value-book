@@ -9,7 +9,7 @@ import json, os, re, html, datetime, shutil
 HERE = os.path.dirname(os.path.abspath(__file__))
 DOCS = os.path.join(HERE, '..', 'docs')
 CFG = json.load(open(os.path.join(HERE, '..', 'site-config.json')))
-HOST = CFG.get('domain') or 'land.buildocrat.store'
+HOST = CFG.get('domain') or 'value.buildocrat.store'
 D = json.load(open(os.path.join(DOCS, 'data', 'lgas.json')))
 META = D['meta']
 SC = {'AB':'Abia','AD':'Adamawa','AK':'Akwa Ibom','AN':'Anambra','BA':'Bauchi','BY':'Bayelsa','BE':'Benue','BR':'Borno','CR':'Cross River','DE':'Delta','EB':'Ebonyi','ED':'Edo','EK':'Ekiti','EN':'Enugu','FC':'FCT, Abuja','GM':'Gombe','IM':'Imo','JI':'Jigawa','KD':'Kaduna','KN':'Kano','KT':'Katsina','KE':'Kebbi','KG':'Kogi','KW':'Kwara','LA':'Lagos','NA':'Nasarawa','NI':'Niger','OG':'Ogun','ON':'Ondo','OS':'Osun','OY':'Oyo','PL':'Plateau','RI':'Rivers','SK':'Sokoto','TA':'Taraba','YB':'Yobe','ZA':'Zamfara'}
