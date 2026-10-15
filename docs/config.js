@@ -1,1 +1,1 @@
-window.LB_CONFIG={"mapboxToken": "", "styleSatellite": "mapbox://styles/mapbox/satellite-streets-v12", "styleStreets": "mapbox://styles/mapbox/light-v11", "nipostKey": "", "nipostBase": "https://api.postcode.gov.ng", "nipostRadius": 120};
+window.LB_CONFIG={"mapboxToken": "pk.eyJ1IjoiYnVpbGRvY3JhdCIsImEiOiJjbXZhNHhha3EwMWRpMnlzODg3ZzllbndlIn0.pthzt30rmS4LQOq_BOI0rQ", "styleSatellite": "mapbox://styles/mapbox/satellite-streets-v12", "styleStreets": "mapbox://styles/mapbox/light-v11", "nipostKey": "", "nipostBase": "https://api.postcode.gov.ng", "nipostRadius": 120};

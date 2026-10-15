@@ -1,6 +1,6 @@
 {
   "domain": "value.buildocrat.store",
-  "mapbox_token": "",
+  "mapbox_token": "pk.eyJ1IjoiYnVpbGRvY3JhdCIsImEiOiJjbXZhNHhha3EwMWRpMnlzODg3ZzllbndlIn0.pthzt30rmS4LQOq_BOI0rQ",
   "mapbox_style_satellite": "mapbox://styles/mapbox/satellite-streets-v12",
   "mapbox_style_streets": "mapbox://styles/mapbox/light-v11",
   "nipost_publishable_key": "",
@@ -12,7 +12,22 @@
   "crawl": {
     "delay_s": 0.7,
     "avg_localities": 12,
-    "npc_pages": {"lagos": 180, "abuja": 160, "ogun": 50, "oyo": 30, "rivers": 30, "delta": 25, "*": 20},
-    "jiji_pages": {"lagos": 40, "abuja": 40, "rivers": 25, "ogun": 25, "oyo": 25, "*": 15}
+    "npc_pages": {
+      "lagos": 180,
+      "abuja": 160,
+      "ogun": 50,
+      "oyo": 30,
+      "rivers": 30,
+      "delta": 25,
+      "*": 20
+    },
+    "jiji_pages": {
+      "lagos": 40,
+      "abuja": 40,
+      "rivers": 25,
+      "ogun": 25,
+      "oyo": 25,
+      "*": 15
+    }
   }
 }
