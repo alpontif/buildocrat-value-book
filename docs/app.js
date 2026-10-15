@@ -622,7 +622,7 @@ function MapboxMap(){
   let lastH=null; function lgaContainingFast(la,lo){ const k=la.toFixed(3)+','+lo.toFixed(3); if(lastH&&lastH[0]===k) return lastH[1]; const i=lgaContaining(la,lo); lastH=[k,i]; return i; }
   function setBase(s){ if(s===sat) return; sat=s; [...$('basemap').children].forEach(b=>b.setAttribute('aria-pressed',(b.dataset.b==='sat')===sat)); map.setStyle(sat?(c.styleSatellite||'mapbox://styles/mapbox/satellite-streets-v12'):(c.styleStreets||'mapbox://styles/mapbox/light-v11'),{diff:false}); }
   $('basemap').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) setBase(b.dataset.b==='sat'); });
-  const whenReady=f=>{ if(map.loaded()) f(); else map.once('load',f); };
+  const whenReady=f=>{ if(map.loaded()) f(); else { f(); map.once('load',f); } };  // move now, and again once loaded
   const api={ kind:'mapbox', map,
     refresh(){ if(!map.isStyleLoaded()||!map.getLayer('lga-fill')) return;
       if(curLayer!==layer){ map.setPaintProperty('lga-fill','fill-color',colr()); curLayer=layer; const d=placesFC(); map.getSource('pl').setData(d); map.getSource('plL').setData(d); }
@@ -633,7 +633,7 @@ function MapboxMap(){
     fitAll(){ whenReady(()=>map.fitBounds(NG,{padding:16})); },
     fitLL(a,b,c2,d){ whenReady(()=>map.fitBounds([[b,a],[d,c2]],{padding:30,maxZoom:13})); },
     fitLGA(i){ const [a,b,c2,d]=lgaBox(i); whenReady(()=>map.fitBounds([[b,a],[d,c2]],{padding:30,maxZoom:13})); },
-    flyPlace(la,lo,t){ whenReady(()=>map.flyTo({center:[lo,la],zoom:Math.max(map.getZoom(),t<=1?11.5:14.5),essential:true})); },
+    flyPlace(la,lo,t){ const o={center:[lo,la],zoom:Math.max(map.getZoom(),t<=1?11.5:14.5)}; if(map.loaded()) map.flyTo({...o,essential:true}); else map.jumpTo(o); },
     zoom(f){ f>1?map.zoomIn():map.zoomOut(); },
     sat(la,lo){ setBase(true); map.flyTo({center:[lo,la],zoom:18,essential:true}); $('mapsec').scrollIntoView({block:'start'}); } };
   return api;
