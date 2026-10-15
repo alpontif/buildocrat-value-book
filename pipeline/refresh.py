@@ -27,3 +27,14 @@ pub = {'mapboxToken': cfg.get('mapbox_token', ''), 'styleSatellite': cfg.get('ma
        'nipostBase': cfg.get('nipost_api_base'), 'nipostRadius': cfg.get('nipost_reverse_radius_m', 120)}
 open(os.path.join(HERE, '..', 'docs', 'config.js'), 'w').write('window.LB_CONFIG=' + json.dumps(pub) + ';\n')
 print('\nRefresh complete.')
+
+# cache-busting: point index.html at the current versions of config.js and app.js
+import hashlib, re
+docs = os.path.join(HERE, '..', 'docs')
+idx = os.path.join(docs, 'index.html'); html = open(idx, encoding='utf-8').read()
+for f in ('config.js', 'app.js'):
+    h = hashlib.md5(open(os.path.join(docs, f), 'rb').read()).hexdigest()[:8]
+    html = re.sub(r'src="%s(\?v=[0-9a-f]+)?"' % re.escape(f), 'src="%s?v=%s"' % (f, h), html)
+open(idx, 'w', encoding='utf-8').write(html)
+print('cache-busted index.html')
+
