@@ -1,0 +1,154 @@
+11.97500|8.47132|Kabuga Housing Estate|estate
+12.03250|8.52250|Yakudima Estate|estate
+12.49733|12.77243|20 Housing Estate|estate
+10.23353|12.04592|20 Housing Estate|estate
+7.26517|5.20164|Ijapo Estate|estate
+6.46405|3.54652|Victoria Garden City|gated
+6.54577|3.32348|Ajao Estate|estate
+6.45871|3.41674|Dolphin Estate|estate
+8.28462|4.78551|Kolawole Estate|estate
+8.88483|7.61448|Navy Estate, Karshi|estate
+6.45246|3.56000|Ikota Estate|estate
+6.49088|3.38641|LSDPC Estate, Ebute Metta|gated
+4.82999|7.00784|Cosmic Homes|estate
+9.10096|6.03422|Talba Housing Estate|estate
+9.04281|7.39619|Patnasonic Estate|estate
+9.04473|7.39259|Efab Global Estate|estate
+9.08959|7.41772|BUA Estate|estate
+9.08200|7.39217|Julius Berger Lifecamp|gated
+6.45169|3.44463|Funai Courts|gated
+6.45192|3.44422|Clapton Court|gated
+6.45410|3.44646|Nordic Villas|gated
+6.45584|3.42924|Regents Court|gated
+6.45604|3.42635|Eagle Court|gated
+6.44799|3.44278|Euro Court|gated
+6.44023|3.41019|The Seattle Residences|gated
+6.45573|3.43302|Colonel Adekunle Fajuyi Court|gated
+6.44372|3.43241|Lagoon View Garden|gated
+6.44467|3.43402|Bourdillon Court|gated
+6.44701|3.43825|Ancestors Court|gated
+6.43922|3.43368|1004 Estates|estate
+6.44456|3.53515|Chevron Housing Complex|gated
+6.43256|3.53486|Twin Lakes Estate|estate
+6.44976|3.43946|Bunu Sheriff Gardens|gated
+6.43363|3.46975|Mobolaji Johnson Place|gated
+6.46647|3.44484|Ocean Parade Estate|estate
+6.45983|3.55841|Eleganza Gardens|estate
+6.42328|3.42849|Kuramo Beach Residences|gated
+6.43574|3.48313|Treasure Gardens|estate
+8.96607|7.47374|Basic Estate, Lokogoma|estate
+6.43634|3.48395|Primewaterview Gardens|estate
+8.96498|7.43874|Kabusa Gardens Estate|estate
+8.96875|7.44101|Same Global Housing Estate|estate
+11.85332|13.20272|505 Housing Estate|estate
+8.96366|7.49443|Spring Meadows Estate|estate
+6.46283|3.65287|Fara Park Estate|estate
+6.46556|3.64728|Crown Estate|estate
+6.59032|3.37180|Alfred Garden Estate|estate
+6.57702|3.38400|Ogudu GRA Estate|estate
+6.56414|3.53627|Oba Adeboruwa Housing Estate|estate
+6.40274|3.40618|Azuri Peninsula|gated
+6.63522|3.51534|Ayangburen Jubilee Estate|estate
+6.56690|3.60052|Egbin Housing Estate|estate
+6.62010|3.35953|Lagos Secretariat Staff Quarters|gated
+6.62295|3.36088|MKO Abiola Gardens|estate
+6.62018|3.36225|Cornerstone Construction Estate|estate
+4.85180|7.04750|Shell Residential Area|gated
+6.55464|3.37758|Millennium Estates|estate
+6.46506|3.42516|Osborne Foreshore Estate|estate
+6.63789|3.51586|His Glory Estate|estate
+6.63624|3.51795|Glory Garden|estate
+6.45077|3.51615|Friends Colony Estate|estate
+6.62478|3.32788|Dairy Farm Low Cost Housing Estate|estate
+6.62711|3.32608|New Dairy Farm Housing Estate|estate
+6.44537|3.49995|Nicon Town Estate|estate
+6.46248|3.44288|Parkview Estate|gated
+6.43857|3.50585|Femi Okunnu Housing Estate Phase 1|estate
+6.44131|3.50627|Femi Okunnu Housing Estate Phase 3|estate
+6.46540|3.71323|Mayfair Gardens Estate|estate
+6.46844|3.61454|Lekki Gardens Estate Phase 1|estate
+6.46562|3.60522|Lekki Gardens Estate Phase 3|estate
+6.47764|3.59279|Lekki Gardens Phase 2|estate
+6.46719|3.58969|Abraham Adesanya Estate|estate
+6.46286|3.85033|Amen Estate|estate
+6.45215|3.50091|Beach Resort Estate|estate
+6.45206|3.49468|Cowrie Creek Estate|estate
+6.44535|3.50674|Cadogan Place Estate|estate
+6.45302|3.50512|Arcadia Grove Estate|estate
+6.46190|3.51164|Pinnock Beach Estate|estate
+6.45082|3.52777|Bourdillon Court Estate, Lekki|estate
+6.49785|3.61296|Seaside Estate|estate
+6.42930|3.55190|Ocean Bay Estate|estate
+6.42953|3.57258|Cooplag Gardens|estate
+6.44635|3.56769|Emerald Estate|estate
+6.44688|3.63902|The Grenadines Homes|estate
+6.46410|3.69998|Sapphire Gardens Estate|estate
+6.42900|3.40768|Atlantic Royal Gardens|gated
+6.46972|3.77551|Beechwood Estate|estate
+6.46083|3.77279|Adiva Plainfields Estate|estate
+6.42383|3.47682|Goshen Beach Estate|estate
+6.42768|3.47724|UPDC Estate|estate
+6.42927|3.48578|Horizon Court Estate|estate
+6.44559|3.46840|Blessing Kayode Gardens|estate
+6.44646|3.46952|SAS Courts|gated
+9.10317|7.50142|Aso Grove Estate|estate
+9.04247|7.54942|NAF Valley Estate|estate
+8.93535|7.49446|Efab Sun City Estate|estate
+6.43458|3.51536|Whiteoak Estate|estate
+6.47696|3.57361|Victory Estate|estate
+6.46428|3.57120|Royal Gardens Estate|estate
+6.46673|3.58331|Graceland Estate|estate
+6.47115|3.61983|Ocean Palm Estate|estate
+6.43253|3.51734|Southlake Homes|estate
+6.50536|3.61431|Cooperative Villas Estate|estate
+6.51128|3.59606|Greenville Estate|estate
+6.47014|3.57233|Tera Haven Estate|estate
+6.44367|3.52697|Chevyview Estate|estate
+6.44125|3.49064|Madiba Court|gated
+9.02476|7.58713|Karu Estate|estate
+10.29045|11.12723|Orji Estate|estate
+9.01472|7.42706|Royal Anchor Estate|estate
+9.01452|7.43056|City Gate Homes|estate
+9.01234|7.43538|DME Estates|estate
+9.02650|7.45900|MEAMS Court|gated
+8.98581|7.44179|SunnyVale Estate|estate
+6.43221|3.51618|Rogersville Estate|estate
+8.97581|7.48882|Trademore Estate|estate
+6.45009|3.49809|Hampton Bay Estate|estate
+6.45715|3.51614|Victoria Bay 2 Estate|estate
+6.54439|3.30224|Orilowo Estate|estate
+9.10408|7.47717|Cosgrove Estate|estate
+6.47164|3.56497|Oriola Fagbeyiro Estate|estate
+6.48898|3.30409|Victory Estate, Ilasamaja|estate
+9.02516|7.36774|Southern Bridge City|estate
+9.10547|7.45032|Gold Court Estate|estate
+9.06089|7.42496|Bilaad Estate|estate
+9.06168|7.42563|Woodfield Estate|estate
+9.06355|7.42938|Sigma Estate|estate
+11.83644|13.09419|Zanna Mustapha Legacy Garden Phase 1|estate
+11.83689|13.09013|Zanna Mustapha Legacy Garden Phase 2|estate
+8.97997|7.34058|River Park Estate|estate
+6.47806|3.57917|Divine Homes Estate|estate
+6.46504|3.58062|Dwellsworth Homes|estate
+6.46236|3.58080|Lekki Pride Estate|estate
+6.47326|3.57506|Thomas Estate|estate
+6.58734|3.27612|Grace Land Estate|estate
+4.38920|7.17916|Nigeria LNG Residential Area|gated
+4.86402|7.08085|ExxonMobil Residential Area|gated
+5.53720|5.73505|Edjeba Estate|estate
+9.08822|7.49143|Shell Compound, Maitama|gated
+9.02427|7.48463|FCDA Housing Estate, Site 1|estate
+9.10496|7.49703|Exsa Estate|estate
+9.10618|7.49465|Alpines|gated
+9.09687|7.48330|Nana Close|gated
+9.09596|7.48373|Erie Close|gated
+6.21900|7.10946|Millenium City Estate|estate
+6.45982|3.52347|Northern Foreshore Estate|estate
+6.44332|3.55898|Lekki County Homes|estate
+6.46019|7.49437|GRA Enugu|gated
+6.17840|6.78831|GRA Phase I, Onitsha|gated
+6.17002|6.81240|GRA Phase II, Onitsha|gated
+4.77899|7.01250|Old GRA, Port Harcourt|gated
+11.81357|13.17535|New GRA, Maiduguri|gated
+11.81359|13.15237|Old GRA, Maiduguri|gated
+11.97540|8.52161|Gandu GRA|gated

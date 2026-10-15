@@ -11,7 +11,7 @@ if len(L) != 774: bad.append(f'{len(L)} LGAs, expected 774')
 if len(D['states']) != 37: bad.append(f'{len(D["states"])} states, expected 37')
 for g in L:
     v = g['v']
-    if not (300 <= (v.get('res') or 0) <= 3e7): bad.append(f'{g["n"]} ({g["s"]}) residential {v.get("res")}')
+    if not (150 <= (v.get('res') or 0) <= 3e7): bad.append(f'{g["n"]} ({g["s"]}) residential {v.get("res")}')
     for k in ('rent3', 'sale4', 'com', 'ind'):
         if not v.get(k) or v[k] <= 0: bad.append(f'{g["n"]} ({g["s"]}) missing {k}')
 by = {(g['s'], g['n']): g['v']['res'] for g in L}

@@ -52,9 +52,17 @@ Published by Buildocrat alongside the <a href="https://rates.buildocrat.store/">
     open(os.path.join(full, 'index.html'), 'w', encoding='utf-8').write(out)
     return canon
 
-ROWS = [('res', 'Residential land', 'per m²'), ('com', 'Commercial land', 'per m²'), ('ind', 'Industrial land', 'per m²'),
-        ('farm', 'Farmland', 'per hectare'), ('rent2', 'Rent, 2-bed flat', 'per year'), ('rent3', 'Rent, 3-bed flat', 'per year'),
-        ('sale3', '3-bed flat, asking price', ''), ('sale4', '4-bed house, asking price', ''), ('crent', 'Shop or office rent', 'per m² per year')]
+ROWS = [('res', 'Land: residential', 'per m²'), ('com', 'Land: commercial', 'per m²'), ('ind', 'Land: industrial', 'per m²'),
+        ('farm', 'Land: farmland', 'per hectare'), ('sale2', 'Building: 2-bed flat', 'asking price'), ('sale3', 'Building: 3-bed flat', 'asking price'),
+        ('sale4', 'Building: 4-bed house', 'asking price'), ('sale5', 'Building: 5-bed house', 'asking price'),
+        ('rent1', 'Rent: 1-bed / mini flat', 'per year'), ('rent2', 'Rent: 2-bed flat', 'per year'), ('rent3', 'Rent: 3-bed flat', 'per year'),
+        ('rent4', 'Rent: 4-bed house', 'per year'), ('crent', 'Rent: shop or office', 'per m² per year')]
+ZN = META.get('zones') or []
+def ztable(zs):
+    if not zs: return ''
+    rows = ''.join(f'<tr><td>{e(ZN[z])}</td><td class="r">{n:,}</td><td class="r">{naira(a)}</td><td class="r">{naira(b)}</td><td class="r">{naira(c)}</td><td class="r">{naira(d)}</td></tr>' for z, n, a, b, c, d in zs)
+    return ('<h2>Economic zones</h2><div class="wrapt"><table><thead><tr><th>Zone</th><th class="r">Places</th><th class="r">Residential ₦/m²</th>'
+            '<th class="r">Commercial ₦/m²</th><th class="r">Farmland ₦/ha</th><th class="r">Rent 3-bed</th></tr></thead><tbody>' + rows + '</tbody></table></div>')
 def vtable(v, extra=()):
     rows = list(extra) + [(n, naira(v.get(k)), u) for k, n, u in ROWS if v.get(k)]
     return '<table><tbody>' + ''.join(f'<tr><td>{e(n)}</td><td class="r"><b>{x}</b></td><td>{e(u)}</td></tr>' for n, x, u in rows) + '</tbody></table>'
@@ -65,7 +73,7 @@ for s in STSLUG.values():
     p = os.path.join(DOCS, s)
     if os.path.isdir(p): shutil.rmtree(p)
 
-urls = [f'https://{HOST}/']
+urls = [f'https://{HOST}/', f'https://{HOST}/extension/']
 by = {}
 for i, g in enumerate(D['lgas']): by.setdefault(g['s'], []).append((i, g))
 for st in D['states']:
@@ -76,7 +84,7 @@ for st in D['states']:
 <p class="lede">Residential land in {e(st['cap'])} is about <b>{naira(st['v']['res'])} per m²</b>; rural land across {e(sn)} about {naira(st['v'].get('resR'))} per m².
 Values for all {len(lg)} local government areas below, from {st['nl']:,} listings in the state and a spatial model. Postcodes in {e(sn)} start <b>{c}</b>.</p>
 <a class="cta" href="/#state={c}">Open {e(sn)} on the satellite map</a>
-<h2>{e(st['cap'])}, typical values</h2>{vtable(st['v'])}
+<h2>{e(st['cap'])}: land, building and rental values</h2>{vtable(st['v'])}{ztable(st.get('zs'))}
 <h2>Every LGA in {e(sn)}</h2><div class="wrapt"><table><thead><tr><th>LGA</th><th>Setting</th><th class="r">Land ₦/m²</th><th class="r">Farmland ₦/ha</th><th class="r">Rent 3-bed</th></tr></thead><tbody>{lrows}</tbody></table></div>"""
     urls.append(page(f'{ss}/', f'Land prices in {sn} State ({MON}) | Land Value Book',
                      f'Land value per m² in {st["cap"]} and all {len(lg)} LGAs of {sn}: residential, commercial, industrial and farmland, rents and house prices. Updated {DLONG}.',
@@ -88,7 +96,7 @@ Values for all {len(lg)} local government areas below, from {st['nl']:,} listing
 <b>{naira(v['res'])} per m²</b>, from about {naira(v.get('lo'))} in its villages to {naira(v.get('hi'))} in its most valuable neighbourhoods.
 {f"Backed by {g['ev']} listings in or near the LGA." if g.get('ev') else 'There are no listings in the LGA, so these values are modelled from its surroundings.'}</p>
 <a class="cta" href="/#lga={c}/{ls}">See {e(g['n'])} on the satellite map, with postcodes</a>
-<h2>Typical values</h2>{vtable(v, [(f'Typical {plot} m² plot', naira(v['res'] * plot), 'residential')])}
+<h2>Land, building and rental values</h2>{vtable(v, [(f'Typical {plot} m² plot', naira(v['res'] * plot), 'residential')])}{ztable(g.get('zs'))}
 <p class="lede" style="margin-top:12px">Urban parts of the LGA average {naira(v.get('resU'))} per m²; villages and rural land {naira(v.get('resR'))} per m².</p>"""
         urls.append(page(f'{ss}/{ls}/', f'Land prices in {g["n"]}, {sn} ({MON}) | Land Value Book',
                          f'{g["n"]} LGA, {sn}: residential land about {naira(v["res"])} per m², farmland, commercial and industrial land, rents and house prices. Updated {DLONG}.',

@@ -1,6 +1,6 @@
 # Buildocrat Nigeria Land Value Book
 
-Land values, rents and house prices for every Nigerian state, all 774 LGAs and about 293,000 towns, villages and neighbourhoods, on a Mapbox satellite map with live NIPOST postcodes. Sister site of the [Construction Rate Book](https://rates.buildocrat.store/).
+Land, building and rental values for every Nigerian state, all 774 LGAs and about 293,000 places (cities, towns, villages, areas, districts, neighbourhoods, gated estates and gated areas), split into economic-status zones, on a Mapbox satellite map with live NIPOST postcodes. Comes with **Value Lens**, a Chrome extension that shows the value at your cursor on Google Maps and OpenStreetMap. Sister site of the [Construction Rate Book](https://rates.buildocrat.store/).
 
 Live at **https://value.buildocrat.store/** (served by GitHub Pages from `docs/`).
 
@@ -17,6 +17,7 @@ Live at **https://value.buildocrat.store/** (served by GitHub Pages from `docs/`
 | `pipeline/pages.py` | 812 static pages (37 states, 774 LGAs) + sitemap, robots, CNAME. |
 | `pipeline/refresh.py` | Runs all of the above in order. |
 | `pipeline/static/` | Fixed reference data: GRID3 settlement register, OSM places, LGA and state boundaries (geoBoundaries/GRID3). |
+| `extension/` | Value Lens Chrome extension (Manifest V3). `pipeline/build_extension.py` zips it to `docs/extension/buildocrat-value-lens.zip`; the download page is `/extension/`. |
 | `.github/workflows/weekly-refresh.yml` | Runs the refresh every Monday 06:17 Nigeria time, commits, pushes, pings IndexNow. |
 | `site-config.json` | Domain, Mapbox token, NIPOST publishable key, crawl limits, fallbacks. |
 
@@ -32,6 +33,14 @@ Live at **https://value.buildocrat.store/** (served by GitHub Pages from `docs/`
 
 Without a Mapbox token the site still works with the built-in plain map; without a NIPOST key it shows the state prefix and links to postcode.gov.ng.
 
+## Value Lens (Chrome extension)
+
+Hover over Google Maps (map or satellite) or OpenStreetMap anywhere in Nigeria: a card shows land, building or rental values at the cursor; Shift pins it; Alt+Shift+V toggles it. It reads the map centre and scale from the page address (Google satellite URLs give the visible map height in metres), works out the cursor's coordinates, and values them on the user's computer from the public data files in `docs/data/`. No personal data leaves the browser.
+
+- **Now:** users install from https://value.buildocrat.store/extension/ (download, unzip, *Load unpacked* in `chrome://extensions`).
+- **Chrome Web Store:** register a developer account (one-time US$5) at chrome.google.com/webstore/devconsole, upload `docs/extension/buildocrat-value-lens.zip`, use the privacy text on the extension page, single purpose "show property values for the map location under the cursor", permissions justification: `storage` (on/off and tab), host `value.buildocrat.store` (public data files). Review usually takes a few days.
+- If Google changes its map page, the extension stops showing cards rather than showing wrong values; update `extension/content.js` (`mapEl` / `view`).
+
 ## Run locally
 
 ```bash
@@ -41,7 +50,7 @@ python pipeline/refresh.py                # crawl first (≈1 to 1.5 hours, poli
 cd docs && python -m http.server 8765     # open http://localhost:8765
 ```
 
-Deep links: `/#state=LA`, `/#lga=LA/ikeja`, `/#at=6.4281,3.4225`, `/#postcode=LA-05-E12-VI-07`.
+Deep links: `/#state=LA`, the pin box above the map takes coordinates, degrees-minutes-seconds or a pasted Google/Apple/OpenStreetMap link,, `/#lga=LA/ikeja`, `/#at=6.4281,3.4225`, `/#postcode=LA-05-E12-VI-07`.
 
 ## Data and licences
 

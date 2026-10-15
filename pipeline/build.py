@@ -34,7 +34,7 @@ def lga_at(lat, lng):
     return None
 
 # ---------------- Places: GRID3 settlement register + OSM urban places ----------------
-TYPES = {'city':0,'town':1,'suburb':2,'quarter':3,'neighbourhood':4,'village':5,'hamlet':6,'locality':7}
+TYPES = {'city':0,'town':1,'suburb':2,'quarter':3,'neighbourhood':4,'village':5,'hamlet':6,'locality':7,'estate':8,'gated':9}
 osm = []; seen=set()
 for fn in ('lb_osm.txt','lb_osm_urban.txt'):
     if not os.path.exists(F(fn)): continue
@@ -71,12 +71,25 @@ if grid:
             places.append(o)
 else:
     places = osm
+# Gated estates and gated areas (OSM named residential areas / estates), kept as their own level
+est_seen=set(); n_est=0
+if os.path.exists(F('lb_osm_estates.txt')):
+    for line in open(F('lb_osm_estates.txt'), encoding='utf-8'):
+        p = line.rstrip('\n').split('|')
+        if len(p) < 4 or not p[2].strip() or p[3] not in ('estate','gated'): continue
+        try: la, lo = float(p[0]), float(p[1])
+        except: continue
+        k=(round(la,2), round(lo,2), norm(p[2]))
+        if k in est_seen: continue
+        est_seen.add(k); places.append({'lat':la,'lng':lo,'name':p[2].strip(),'type':p[3],'src':'osm'}); n_est+=1
+print('estates and gated areas', n_est)
 for p in places:
     p['lga'] = lga_at(p['lat'], p['lng'])
 places = [p for p in places if p['lga'] is not None]
 for p in places: p['st'] = LG[p['lga']]['state']
 # urban / rural for GRID3 points without an OSM urban type: dense clusters near a city or town are urban neighbourhoods
-PX=np.array([[p['lng']*math.cos(math.radians(9))*111.32, p['lat']*110.57] for p in places]); ptree=_T(PX)
+PX=np.array([[p['lng']*math.cos(math.radians(9))*111.32, p['lat']*110.57] for p in places])
+ptree=_T(PX[[j for j,p in enumerate(places) if p['type'] not in ('estate','gated')]])
 U=np.array([PX[j] for j,p in enumerate(places) if p['type'] in ('city','town')]); utree=_T(U)
 dens = np.array([len(x) for x in ptree.query_ball_point(PX, 1.5)])
 du,_ = utree.query(PX)
@@ -85,6 +98,27 @@ for j,p in enumerate(places):
     if p['src']=='grid3' and p['type']=='village':
         if dens[j]>=14 or (dens[j]>=8 and du[j]<=8): p['type']='neighbourhood'
         elif dens[j]<=2 and du[j]>15: p['type']='hamlet'
+# levels by name: housing estates, gated areas (GRAs, staff quarters, barracks, closes) and numbered/planned areas
+EST_RE = re.compile(r"\b(estates?|gardens?|garden city|homes|villas?|residences?|courts?|scheme|housing)\b", re.I)
+GATED_RE = re.compile(r"\b(barracks|cantonment|reserved area|g\.?r\.?a\.?|(staff|officers?|police|mopol|army|military|navy|naval|air ?force|railway|federal|govt|government|university|polytechnic|college|nepa|phcn|judges?|senior|junior|customs|immigration|prisons?|hospital|teachers?|doctors?|legislative|legislators?|ministers?)\s+(quarters?|quaters|qtrs))\b", re.I)
+ROADISH = re.compile(r"\b(road|street|avenue|way|junction|bus ?stop)\b", re.I)
+AREA_RE = re.compile(r"^area\s+\w+\b|\blayout\b|\bsite\s+\d", re.I)
+for p in places:
+    if p['type'] in ('city','town','village','hamlet','estate','gated'): continue
+    n = p['name']
+    if ROADISH.search(n): continue
+    if EST_RE.search(n): p['type'] = 'estate'
+    elif GATED_RE.search(n): p['type'] = 'gated'
+    elif AREA_RE.search(n): p['type'] = 'quarter'
+# one point per named estate / gated area: drop repeats of the same name within 1.5 km (OSM first)
+_seen = {}; _keep = []
+for p in sorted(places, key=lambda p: p['src'] != 'osm'):
+    if p['type'] in ('estate','gated'):
+        key = (p.get('st') or '', norm(p['name']))
+        if any(hav(p['lat'],p['lng'],a,b_) <= 1.5 for a,b_ in _seen.get(key, [])): continue
+        _seen.setdefault(key, []).append((p['lat'],p['lng']))
+    _keep.append(p)
+places = _keep
 print('in Nigeria', len(places), collections.Counter(p['type'] for p in places))
 
 # name index per state
@@ -154,6 +188,10 @@ obs = []   # evidence observations: dict(st, lat,lng, label, level, metric, valu
 def add(st, g, metric, value, src):
     obs.append({'st':st,'lat':g[0],'lng':g[1],'label':g[2],'level':g[3],'m':metric,'v':value,'src':src})
 
+EST_NAME = re.compile(r"^(.*?\b(?:estates?|gardens?|garden city|homes|villas?|residences?|courts?|scheme))\b(\s+phase\s+\w+)?", re.I)
+EST_LEAD = r"^.*\b(off|inside|within|in|by|behind|before|after|opposite|opp\.?|near|beside|along|around|facing|close to|at)\s+"
+BAD_EST = re.compile(r"\b(road|street|avenue|expressway|junction|plot|hotel|church|school|market|bus ?stop|hospital)\b", re.I)
+lst_est = collections.defaultdict(list)
 # NPC land
 R = json.load(open(F('lb_npc_land.json'), encoding='utf-8'))
 seenh=set(); stats=collections.Counter()
@@ -180,12 +218,36 @@ for x in R:
     if (st, loc) not in locgeo: locgeo[(st,loc)] = geocode(st, [loc], near=CAP_LL[st], maxkm=400)
     base = locgeo[(st,loc)]
     parts = [s.strip() for s in (x.get('addr') or '').split(',') if s.strip()]
+    est_part = next((k for k,pt in enumerate(parts[:-1]) if EST_RE.search(pt) and len(pt.split())>=2 and len(pt)<=60), None)
     parts = [s for s in parts if norm(s) not in (norm(SC[st]), 'abuja', 'lagos')]
     g = geocode(st, parts[:-1] if len(parts) > 1 else [], near=base[:2] if base else CAP_LL[st], maxkm=25) or base
     if not g: stats['nogeo']+=1; continue
     metric = {'res':'land_res','com':'land_com','ind':'land_ind','farm':'land_farm','tract':'land_tract'}[cls]
     add(st, g, metric, ppm, 'npc'); stats['ok']+=1
+    if est_part is not None:   # remember where listings put this estate
+        raw = [s_.strip() for s_ in (x.get('addr') or '').split(',') if s_.strip()]
+        m = EST_NAME.search(raw[est_part])
+        if m:
+            nm = re.sub(EST_LEAD, '', m.group(1) + (m.group(2) or ''), flags=re.I).strip(" -.'")
+            if nm.isupper() or nm.islower(): nm = nm.title()
+            rest = [s_ for s_ in raw[est_part+1:-1] if norm(s_) not in (norm(SC[st]), 'abuja', 'lagos')]
+            loc_g = geocode(st, rest, near=base[:2] if base else CAP_LL[st], maxkm=25) if rest else None
+            loc_g = loc_g or (g if g[3] != 'place' or norm(g[2]) != norm(nm) else None)
+            if loc_g and len(nm.split()) >= 2 and len(nm) <= 48 and not BAD_EST.search(nm):
+                lst_est[(st, norm(nm))].append((loc_g[0], loc_g[1], nm))
 print('npc land', dict(stats))
+# estates known only from listing addresses: placed at the locality the listings give (approximate)
+n_le = 0
+for (st, key), pts in lst_est.items():
+    if len(pts) < 2: continue
+    if any(places[j]['type'] in ('estate','gated') for j in idx.get((st, key), [])): continue
+    la = float(np.median([a for a,b,c in pts])); lo = float(np.median([b for a,b,c in pts]))
+    nm = collections.Counter(c for a,b,c in pts).most_common(1)[0][0]
+    li = lga_at(la, lo)
+    if li is None or LG[li]['state'] != st: continue
+    places.append({'lat':la,'lng':lo,'name':nm,'type':'estate','src':'listing','ap':1,'lga':li,'st':st,'d15':0,'du':0.0}); n_le += 1
+    idx[(st, key)].append(len(places)-1)
+print('estates from listing addresses', n_le)
 
 # Jiji
 J = json.load(open(F('lb_jiji.json'), encoding='utf-8'))

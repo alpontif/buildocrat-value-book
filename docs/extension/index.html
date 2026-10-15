@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en-NG"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Buildocrat Value Lens for Chrome</title>
+<meta name="description" content="A Chrome extension that shows land, building and rental values as you hover over Google Maps or OpenStreetMap anywhere in Nigeria.">
+<link rel="canonical" href="https://value.buildocrat.store/extension/">
+<style>
+:root{--bg:#ECEDE9;--surface:#F7F7F3;--ink:#16201B;--muted:#56615A;--line:#CDD1C7;--accent:#0E5A4B}
+@media (prefers-color-scheme:dark){:root{--bg:#101513;--surface:#171E1B;--ink:#E6EBE6;--muted:#9BA69F;--line:#2A3430;--accent:#5CC3A4;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Source Sans 3","Segoe UI",Roboto,Arial,sans-serif;padding:0 16px 48px}
+.w{max-width:760px;margin:0 auto}header{padding:14px 0;border-bottom:1px solid var(--line)}header a{color:inherit;text-decoration:none;font-weight:700}
+h1{font:700 clamp(1.8rem,5vw,2.6rem)/1.1 "Familjen Grotesk",Arial,sans-serif;margin:28px 0 10px}h2{font:700 1.2rem Arial,sans-serif;margin:28px 0 8px}
+p,li{color:var(--muted)}b{color:var(--ink)}a{color:var(--accent)}
+.cta{display:inline-block;margin:10px 10px 0 0;padding:11px 18px;border-radius:9px;background:var(--accent);color:#fff;text-decoration:none;font-weight:700}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:16px}
+ol li{margin-bottom:6px}code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9em}
+</style></head><body><div class="w">
+<header><a href="/">Buildocrat Land Value Book</a></header>
+<h1>Value Lens for Chrome</h1>
+<p>Hover over <b>Google Maps</b> (map or satellite) or <b>OpenStreetMap</b> anywhere in Nigeria and a small card shows the value at your cursor: land per m² and a typical plot, house prices and build cost, or rents and yields. Hold <b>Shift</b> to pin the card, switch between land, building and rent, and open the full report with the NIPOST postcode.</p>
+<a class="cta" href="buildocrat-value-lens.zip" download>Download the extension (.zip)</a>
+<div class="card"><h2 style="margin-top:0">Install in Chrome, Edge or Brave</h2><ol>
+<li>Download the zip above and unzip it to a folder you will keep.</li>
+<li>Open <code>chrome://extensions</code> and switch on <b>Developer mode</b> (top right).</li>
+<li>Click <b>Load unpacked</b> and choose the unzipped folder.</li>
+<li>Open Google Maps, zoom in on any Nigerian town and move your mouse over the map.</li></ol>
+<p>Turn it on or off from the toolbar icon or with <b>Alt+Shift+V</b>. The toolbar popup also values any coordinates or map link you paste.</p></div>
+<h2>Privacy</h2>
+<p>The extension reads the map position from the page address and your cursor position on the map, and works out the value on your own computer from the Land Value Book's public data files, which it downloads from value.buildocrat.store. It sends nothing about you, your browsing or your location anywhere, stores only your on/off and tab choice, and runs only on Google Maps and OpenStreetMap.</p>
+<p>Values are indicative asking prices for screening and negotiation, not a valuation report.</p>
+</div></body></html>

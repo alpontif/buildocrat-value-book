@@ -101,6 +101,17 @@ section{padding-block:30px;border-top:1px solid var(--line)}
 .mapboxgl-ctrl-bottom-right{z-index:3}
 .pc{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
 .pcode{display:flex;align-items:baseline;gap:10px;margin:2px 0 4px}
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin:4px 0 12px;overflow-x:auto}
+.tabs button{font:700 1rem var(--f-display);padding:10px 16px;border:0;background:transparent;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.pinbox{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.pinbox label{display:block;font-weight:600;font-size:.86rem;margin-bottom:6px}
+.pinrow{display:flex;gap:8px;flex-wrap:wrap}.pinrow input{flex:1 1 280px}
+.ztag{font:600 .72rem var(--f-mono);padding:2px 8px;border-radius:999px;border:1px solid var(--zc);color:var(--zc);align-self:center}
+.zdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.zleg{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:5px;max-width:330px}.zleg span{display:inline-flex;align-items:center;gap:4px}.zleg i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.lgafilt{display:flex;gap:6px;margin-bottom:6px}.lgafilt input{flex:1;min-width:0}
+.mini.zt td{font-size:.8rem}
 .pcode .mono{font-size:1.35rem;font-weight:600;letter-spacing:.04em;color:var(--accent)}
 .mapbar{position:absolute;top:10px;left:10px;right:10px;display:flex;gap:6px;flex-wrap:wrap;z-index:2;pointer-events:none}
 .mapbar>*{pointer-events:auto}
@@ -187,7 +198,7 @@ footer{border-top:1px solid var(--line);padding-top:18px;font-size:.84rem;color:
   <div class="wrap">
     <a class="brand" href="#top"><b>Buildocrat</b><span>Land Value Book</span></a>
     <nav class="nav" aria-label="Sections">
-      <a href="#mapsec">Map</a><a href="#states">States</a><a href="#lgas">LGAs</a><a href="#places">Towns &amp; villages</a><a href="#evidence">Market evidence</a><a href="#estimate">Estimator</a><a href="#method">Method</a>
+      <a href="#mapsec">Map</a><a href="#states">States</a><a href="#lgas">LGAs</a><a href="#places">Towns &amp; villages</a><a href="#evidence">Market evidence</a><a href="#estimate">Estimator</a><a href="#method">Method</a><a href="/extension/">Chrome extension</a>
     </nav>
     <a class="sib" href="https://rates.buildocrat.store/">Construction Rate Book →</a>
   </div>
@@ -198,7 +209,7 @@ footer{border-top:1px solid var(--line);padding-top:18px;font-size:.84rem;color:
     <div>
       <p class="eyebrow">Weekly edition · <span id="edDate">October 2026</span> · Naira at ₦<span id="edFx">1,333</span> to the US dollar</p>
       <h1>Nigeria Land Value Book</h1>
-      <p class="lede">Land values, rents and house prices for <strong>every state, all 774 local government areas</strong> and <strong><span id="hPlaces">every mapped</span> towns, villages and neighbourhoods</strong>. Residential, commercial, industrial and farmland, urban and rural, built from <strong><span id="hListings">tens of thousands of</span> live listings</strong> and a spatial model that fills the gaps.</p>
+      <p class="lede">Land, building and rental values for <strong>every state, all 774 local government areas</strong> and <strong><span id="hPlaces">every mapped</span> cities, towns, villages, districts, neighbourhoods and gated estates</strong>. Land by use and economic zone, house prices, building costs and rents, built from <strong><span id="hListings">tens of thousands of</span> live listings</strong> and a spatial model that fills the gaps.</p>
       <div class="searchbox">
         <input id="q" type="search" autocomplete="off" placeholder="Search any state, LGA, town, village or neighbourhood" aria-label="Search places" aria-controls="sugg" aria-autocomplete="list">
         <ul class="sugg" id="sugg" role="listbox" hidden></ul>
@@ -222,6 +233,16 @@ footer{border-top:1px solid var(--line);padding-top:18px;font-size:.84rem;color:
         <p>Every LGA is shaded by the layer you choose. Zoom in on the satellite image to find towns, streets and the actual plot or house, then click it for its values and its NIPOST postcode. The locate button finds where you are standing.</p>
       </div>
     </div>
+    <div class="tabs" role="tablist" id="tabs" aria-label="Value type">
+      <button type="button" role="tab" data-t="land" aria-selected="true">Land value</button>
+      <button type="button" role="tab" data-t="bld" aria-selected="false" tabindex="-1">Building value</button>
+      <button type="button" role="tab" data-t="rent" aria-selected="false" tabindex="-1">Rental value</button>
+    </div>
+    <form class="pinbox" id="pinform" autocomplete="off">
+      <label for="pinq">Drop a pin by coordinates</label>
+      <div class="pinrow"><input id="pinq" type="text" inputmode="text" placeholder="9.0765, 7.3986  ·  9°04'35&quot;N 7°23'55&quot;E  ·  or paste a Google Maps link"><button class="btn" type="submit">Value it</button><button class="btn ghost" type="button" id="pinme">Use my location</button></div>
+      <p class="note" id="pinmsg" aria-live="polite"></p>
+    </form>
     <div class="app">
       <div class="mapcard" id="mapcard">
         <div class="mapbar">
@@ -244,7 +265,7 @@ footer{border-top:1px solid var(--line);padding-top:18px;font-size:.84rem;color:
   </section>
 
   <section id="states">
-    <div class="sec-head"><div><p class="eyebrow">States</p><h2>Every state at a glance</h2><p>Capital-city land and rents beside the rural median for the same state. Click a row to open the state on the map.</p></div></div>
+    <div class="sec-head"><div><p class="eyebrow">States</p><h2>Every state at a glance</h2><p><span id="stabT">Land value in each state capital, beside rural land.</span> Click a row to open the state on the map. The tabs above the map switch these tables between land, building and rental values.</p></div></div>
     <div class="tablewrap"><table class="t" id="stable"><thead></thead><tbody></tbody></table></div>
   </section>
 
@@ -264,7 +285,7 @@ footer{border-top:1px solid var(--line);padding-top:18px;font-size:.84rem;color:
     <div class="filters">
       <input id="pq" type="search" placeholder="Search towns, villages, neighbourhoods" aria-label="Search places">
       <select id="pst" aria-label="State"><option value="">All states</option></select>
-      <select id="pty" aria-label="Type"><option value="">All types</option><option value="0">City</option><option value="1">Town</option><option value="2">Suburb / district</option><option value="4">Neighbourhood / quarter</option><option value="5">Village</option><option value="6">Hamlet</option></select>
+      <select id="pty" aria-label="Level"><option value="">All levels</option><option value="0">Cities</option><option value="1">Towns</option><option value="5">Villages</option><option value="3">Areas</option><option value="2">Districts</option><option value="4">Neighbourhoods</option><option value="8">Gated estates</option><option value="9">Gated areas</option><option value="6">Hamlets and localities</option></select>
       <select id="psort" aria-label="Sort"><option value="v">Highest value first</option><option value="a">A to Z</option><option value="l">Lowest value first</option></select>
     </div>
     <div class="tablewrap"><table class="t" id="ptable"><thead></thead><tbody></tbody></table></div>
@@ -275,7 +296,7 @@ footer{border-top:1px solid var(--line);padding-top:18px;font-size:.84rem;color:
     <div class="sec-head"><div><p class="eyebrow">Market evidence</p><h2>Where the listings are</h2><p>Locations with at least five usable listings in the week of <span class="evDate">–</span>, before any modelling. These anchor the map; everything else is estimated from them.</p></div></div>
     <div class="filters">
       <input id="eq" type="search" placeholder="Filter locations" aria-label="Filter evidence">
-      <select id="em" aria-label="Measure"><option value="land_res">Residential land, ₦/m²</option><option value="land_com">Commercial land, ₦/m²</option><option value="land_ind">Industrial land, ₦/m²</option><option value="land_farm">Farmland, ₦/ha</option><option value="rent2">Rent, 2-bed, per year</option><option value="rent3">Rent, 3-bed, per year</option><option value="sale3">Sale, 3-bed</option><option value="sale4">Sale, 4-bed</option></select>
+      <select id="em" aria-label="Measure"><option value="land_res">Residential land, ₦/m²</option><option value="land_com">Commercial land, ₦/m²</option><option value="land_ind">Industrial land, ₦/m²</option><option value="land_farm">Farmland, ₦/ha</option><option value="rent1">Rent, 1-bed, per year</option><option value="rent2">Rent, 2-bed, per year</option><option value="rent3">Rent, 3-bed, per year</option><option value="rent4">Rent, 4-bed house, per year</option><option value="sale2">Sale, 2-bed</option><option value="sale3">Sale, 3-bed</option><option value="sale4">Sale, 4-bed</option><option value="sale5">Sale, 5-bed</option></select>
     </div>
     <div class="tablewrap"><table class="t" id="etable"><thead></thead><tbody></tbody></table></div>
     <div class="pager" id="epager"></div>
@@ -308,6 +329,8 @@ footer{border-top:1px solid var(--line);padding-top:18px;font-size:.84rem;color:
           <dt>Less depreciation</dt><dd id="o_dep">–</dd>
           <dt class="sub">Buildings</dt><dd class="sub" id="o_bld">–</dd>
           <dt>In US dollars</dt><dd id="o_usd">–</dd>
+          <dt class="sub">Likely rent</dt><dd class="sub" id="o_rent">–</dd>
+          <dt>Gross yield on value</dt><dd id="o_yield">–</dd>
         </dl>
         <p class="note" style="margin-top:12px">Build rate <span id="buildRate">–</span> per m² for a standard bungalow in Abuja (current Rate Book), with a state factor. Depreciation 2% a year, capped at 70%. Not a formal valuation; for lending, sale or court use, commission an ESVARBON-registered valuer.</p>
       </div>
@@ -322,6 +345,7 @@ footer{border-top:1px solid var(--line);padding-top:18px;font-size:.84rem;color:
   <footer>
     <p>The Nigeria Land Value Book is published by Buildocrat alongside the <a href="https://rates.buildocrat.store/">Nigeria Construction Rate Book</a>.</p>
     <p>Buildocrat Property Technologies Ltd (RC 7019619), No 30 Anthony Enahoro Street, Utako, Abuja. WhatsApp <span class="mono">+234 701 802 4292</span>, email <span class="mono">buildocrat@gmail.com</span>.</p>
+    <p><b>Value Lens for Chrome:</b> hover over Google Maps or OpenStreetMap anywhere in Nigeria to see land, building and rental values at your cursor. <a href="/extension/">Get the extension</a>.</p>
     <p>Indicative asking-price values for screening, budgeting and negotiation. Not a valuation report. Verify title at the state land registry (AGIS in the FCT) and the survey plan before paying for land. Map data © OpenStreetMap contributors (ODbL); satellite imagery © Mapbox, © Maxar; settlements and boundaries GRID3/geoBoundaries (CC BY 4.0); postcodes NIPOST, postcode.gov.ng.</p>
   </footer>
 </main>

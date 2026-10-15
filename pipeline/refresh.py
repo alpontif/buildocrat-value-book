@@ -17,7 +17,7 @@ import shutil
 prev = os.path.join(HERE, '..', 'docs', 'data', 'lgas.json')
 os.makedirs(os.path.join(HERE, 'out'), exist_ok=True)
 if os.path.exists(prev): shutil.copy(prev, os.path.join(HERE, 'out', 'prev_lgas.json'))
-for s in ('build.py', 'run_model.py', 'export.py', 'sanity.py', 'pages.py'):
+for s in ('build.py', 'run_model.py', 'export.py', 'sanity.py', 'pages.py', 'build_extension.py'):
     run(s)
 
 # browser config (public keys only)

@@ -11,7 +11,7 @@ obs, agg = E['obs'], E['agg']
 CXK = math.cos(math.radians(9))*111.32; CYK = 110.57
 def XY(lat, lng): return np.column_stack([np.asarray(lng,float)*CXK, np.asarray(lat,float)*CYK])
 PX = XY([p['lat'] for p in P], [p['lng'] for p in P])
-tree = cKDTree(PX)
+tree = cKDTree(PX[[i for i,p in enumerate(P) if p['type'] not in ('estate','gated')]])  # estates are not extra settlements
 URBT = ('city','town','suburb','quarter','neighbourhood')
 utree = cKDTree(PX[[i for i,p in enumerate(P) if p['type'] in URBT]])
 STATES = sorted(CAP_LL); SI = {s:i for i,s in enumerate(STATES)}
