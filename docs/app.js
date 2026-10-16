@@ -653,6 +653,15 @@ function route(){
   return false;
 }
 
+/* ---------- shared into the installed app (Android share sheet): a map link or coordinates opens on that spot ---------- */
+function shared(){
+  const u=new URLSearchParams(location.search); const txt=[u.get('su'),u.get('stx'),u.get('st')].filter(Boolean).join(' '); if(!txt) return false;
+  history.replaceState(null,'',location.pathname+location.hash);
+  const p=parseSpot(txt)||(txt.match(/https?:\/\/\S+/g)||[]).map(parseSpot).find(Boolean);
+  if(p&&pickSpot(p[0],p[1],true)){ history.replaceState(null,'','#at='+p[0].toFixed(5)+','+p[1].toFixed(5)); $('mapsec').scrollIntoView({block:'start'}); return true; }
+  $('pinq').value=txt.slice(0,300); $('pinmsg').textContent='No coordinates found in what was shared. In Google Maps, drop a pin and share that pin, or paste the coordinates here.'; $('pinform').scrollIntoView({block:'center'}); return false;
+}
+
 /* ---------- boot ---------- */
 (async()=>{
   readColors();
@@ -665,7 +674,7 @@ function route(){
   buildPaths(); computeBreaks(); buildLayers(); legend(); buildSearch();
   if(NP().mapboxToken){ try{ await loadMapbox(); if(mapboxgl.supported&&!mapboxgl.supported()) throw new Error('WebGL unavailable'); MAPI=MapboxMap(); }catch(err){ console.warn('Mapbox unavailable, using the plain map', err); MAPI=CANVAS_MAP; $('mbmap').hidden=true; canvas.hidden=false; } }
   if(MAPI===CANVAS_MAP){ resize(); fitAll(); new ResizeObserver(()=>resize()).observe(canvas); }
-  if(!route()) nationalPanel();
+  if(!shared()&&!route()) nationalPanel();
   window.addEventListener('hashchange',route);
   tables(); method();
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readColors(); MAPI.refresh();});

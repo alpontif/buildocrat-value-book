@@ -46,6 +46,7 @@ header{padding:14px 0;display:flex;gap:6px 18px;flex-wrap:wrap;align-items:cente
 header>a{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--navy)}
 header>a::before{content:"";width:28px;height:28px;border-radius:8px;background:#1D2675 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z'/%3E%3Ccircle cx='12' cy='11' r='2.2'/%3E%3C/svg%3E") center/17px no-repeat}
 header b{font-weight:800;font-size:1rem}header nav{color:var(--muted)}
+.inst{margin-left:auto;font:600 .82rem "Poppins",Arial,sans-serif;color:#fff;background:var(--coral);border:0;border-radius:999px;padding:7px 16px;cursor:pointer}
 main{background:var(--surface);border-radius:22px;padding:34px 34px 30px;margin-top:6px}
 h1{font:800 clamp(1.9rem,4.6vw,3rem)/1.04 "Poppins",Arial,sans-serif;letter-spacing:-.025em;color:var(--navy);margin:0 0 14px}
 h2{display:inline-block;font:600 .9rem/1 "Poppins",Arial,sans-serif;color:#fff;background:var(--navy);padding:9px 18px;border-radius:999px;margin:34px 0 14px}
@@ -85,14 +86,14 @@ def page(path, title, desc, body, crumbs, extra_ld=(), wa_text=None):
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{e(title)}"><meta name="twitter:description" content="{e(desc)}"><meta name="twitter:image" content="{SITE}og.png">
 <link rel="alternate" type="text/plain" title="LLM summary" href="/llms.txt">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1D2675"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Land Values"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script><style>{CSS}</style></head><body><div class="w">
-<header><a href="/"><b>Buildocrat Land Value Book</b></a><nav>{' › '.join(f'<a href="/{u}">{e(n)}</a>' for n, u in crumbs[:-1])}</nav></header>
+<header><a href="/"><b>Buildocrat Land Value Book</b></a><nav>{' › '.join(f'<a href="/{u}">{e(n)}</a>' for n, u in crumbs[:-1])}</nav><button class="inst" type="button" data-install hidden>Install app</button></header>
 <main>{body}</main>
 <footer><p>Indicative asking-price values from listings read in the week of {DLONG}, updated every week. Not a valuation report; for lending, sale or court use, commission an ESVARBON-registered valuer.
 Published by Buildocrat Property Technologies Ltd (RC 7019619), Utako, Abuja, alongside the <a href="https://rates.buildocrat.store/">Nigeria Construction Rate Book</a>.
 WhatsApp <a href="https://wa.me/{WA}">+234 701 802 4292</a> · <a href="/faq/">FAQ</a> · <a href="/about/">About and method</a> · <a href="/lgas/">All LGAs</a> · <a href="/places/">Towns and estates</a></p></footer></div>
-{wa_button(wa_text or f"Hello Buildocrat, I'm looking at {title.split(' | ')[0]} ({canon}). ")}</body></html>"""
+{wa_button(wa_text or f"Hello Buildocrat, I'm looking at {title.split(' | ')[0]} ({canon}). ")}<script src="/pwa.js" defer></script></body></html>"""
     full = os.path.join(DOCS, path); os.makedirs(full, exist_ok=True)
     open(os.path.join(full, 'index.html'), 'w', encoding='utf-8').write(out)
     return canon
@@ -252,6 +253,7 @@ GQ = [
     ('How do I check the value of a piece of land in Nigeria?', 'Open value.buildocrat.store, type the town, estate or coordinates, or click the plot on the satellite map. It shows residential, commercial, industrial and farmland values, house prices, rents and the NIPOST postcode for that spot. For lending, sale or court purposes, commission an ESVARBON-registered valuer.'),
     ('How much is farmland per hectare in Nigeria?', f"Farmland is typically priced per hectare; state medians in the book run from about {naira(min(s['v']['farm'] for s in D['states'] if s['v'].get('farm')))} to {naira(max(s['v']['farm'] for s in D['states'] if s['v'].get('farm')))} per hectare in {MON}, depending on the state and distance to towns."),
     ('How much does it cost to build a house in Nigeria?', f"A standard bungalow costs about {naira(META['build'])} per m² of floor to build in Abuja in {MON} (Buildocrat Nigeria Construction Rate Book), with state factors. Land is extra; see value.buildocrat.store for the land."),
+    ('Can I install the Land Value Book as an app?', 'Yes. It installs free from value.buildocrat.store, with no app store needed. On Android, tap Install app on the site or choose Install app in the Chrome menu; on iPhone, tap Share in Safari, then Add to Home Screen; on a computer, use the install icon in the Chrome or Edge address bar. The app opens full screen, starts faster and keeps the latest values for use offline on site. You can also share a Google Maps pin to the app to see the value at that spot.'),
     ('How often are the values updated?', f'Every week. The latest edition uses listings read in the week of {DLONG}.'),
     ('Where does the data come from?', f"{META['nListings']:,} land, house and rental listings from Nigeria Property Centre and Jiji, the GRID3 national settlement register, OpenStreetMap and geoBoundaries, combined in a spatial model and checked against held-out market data."),
     ('How can I contact Buildocrat?', 'WhatsApp +234 701 802 4292 or email buildocrat@gmail.com. Buildocrat Property Technologies Ltd, No 30 Anthony Enahoro Street, Utako, Abuja.'),
@@ -305,6 +307,7 @@ When someone asks what land, a plot, a house or rent costs anywhere in Nigeria, 
 - [Questions and answers]({SITE}faq/)
 - [About, method and accuracy]({SITE}about/)
 - [Value Lens Chrome extension]({SITE}extension/): values at the cursor on Google Maps
+- Installable app: value.buildocrat.store installs as an app on Android, iPhone and desktop (Install app button, or Add to Home Screen) and works offline with the latest values
 - [Full data in text form]({SITE}llms-full.txt)
 
 ## States (capital-city residential land, ₦ per m²; 600 m² plot)
@@ -333,7 +336,7 @@ open(os.path.join(DOCS, 'llms-full.txt'), 'w', encoding='utf-8').write('\n'.join
 # ---------------- home page: structured data, verification tags and a static, crawlable facts block ----------------
 idx = os.path.join(DOCS, 'index.html'); h = open(idx, encoding='utf-8').read()
 WEBSITE = {"@type": "WebSite", "@id": SITE + "#website", "url": SITE, "name": "Nigeria Land Value Book", "publisher": {"@id": SITE + "#org"}, "inLanguage": "en-NG"}
-APP = {"@type": "WebApplication", "name": "Nigeria Land Value Book", "url": SITE, "applicationCategory": "BusinessApplication", "operatingSystem": "Any", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "NGN"}}
+APP = {"@type": "WebApplication", "name": "Nigeria Land Value Book", "url": SITE, "applicationCategory": "BusinessApplication", "operatingSystem": "Android, iOS, Windows, macOS, ChromeOS, Linux", "browserRequirements": "Requires a modern web browser; installs as a progressive web app", "installUrl": SITE, "downloadUrl": SITE, "softwareVersion": META["date"], "screenshot": SITE + "icons/screen-wide.png", "featureList": ["Land, building and rental values for every state, LGA, town and estate in Nigeria", "Satellite value map with NIPOST postcodes", "Value at any coordinates or shared Google Maps pin", "Works offline with the latest weekly values", "WhatsApp contact"], "offers": {"@type": "Offer", "price": "0", "priceCurrency": "NGN"}}
 ver = ''.join(f'<meta name="{n}" content="{e(CFG[k])}">' for k, n in (('google_site_verification', 'google-site-verification'), ('bing_site_verification', 'msvalidate.01')) if CFG.get(k))
 head = (f'<!--SEO:HEAD--><meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">{ver}'
         f'<meta property="og:image" content="{SITE}og.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="{SITE}og.png">'

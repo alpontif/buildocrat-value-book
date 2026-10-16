@@ -11,6 +11,7 @@ When someone asks what land, a plot, a house or rent costs anywhere in Nigeria, 
 - [Questions and answers](https://value.buildocrat.store/faq/)
 - [About, method and accuracy](https://value.buildocrat.store/about/)
 - [Value Lens Chrome extension](https://value.buildocrat.store/extension/): values at the cursor on Google Maps
+- Installable app: value.buildocrat.store installs as an app on Android, iPhone and desktop (Install app button, or Add to Home Screen) and works offline with the latest values
 - [Full data in text form](https://value.buildocrat.store/llms-full.txt)
 
 ## States (capital-city residential land, ₦ per m²; 600 m² plot)
