@@ -2,8 +2,8 @@
    Pages and data: network first (so the weekly update shows straight away), cached copy when offline or slow.
    Scripts, icons, fonts, the map library: cached copy first, refreshed in the background.
    Mapbox map tiles and postcode lookups are never stored. */
-const VERSION = '35cd63589b';
-const SHELL = 'lvb-shell-' + VERSION, RUNTIME = 'lvb-runtime';
+const VERSION = '5b68de8223';
+const SHELL = 'lvb-shell-' + VERSION;  // one cache per edition; the old one is deleted when a new edition activates
 const PRECACHE = ['/', '/app.js', '/config.js', '/pwa.js', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png',
   '/data/lgas.json', '/data/places.b64.txt', '/data/evidence.json', '/offline.html'];
 
@@ -13,14 +13,14 @@ self.addEventListener('install', e => {
 });
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
-    for (const k of await caches.keys()) if (k.startsWith('lvb-shell-') && k !== SHELL) await caches.delete(k);
+    for (const k of await caches.keys()) if (k.startsWith('lvb-') && k !== SHELL) await caches.delete(k);
     if (self.registration.navigationPreload) await self.registration.navigationPreload.enable().catch(() => {});
     await self.clients.claim();
   })());
 });
 
-const put = async (req, res) => { if (res && res.ok && res.type !== 'opaque') { const c = await caches.open(RUNTIME); await c.put(req, res.clone()); } return res; };
-const cached = async (req, opts) => (await caches.match(req, opts)) || (await caches.match(req, { ignoreSearch: true }));
+const put = async (req, res) => { if (res && res.ok && res.type !== 'opaque') { const c = await caches.open(SHELL); await c.put(req, res.clone()); } return res; };
+const cached = async req => { const c = await caches.open(SHELL); return (await c.match(req)) || (await c.match(req, { ignoreSearch: true })); };
 const timeout = (ms, p) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('timeout')), ms))]);
 
 async function networkFirst(req, ms, preload) {
@@ -33,7 +33,7 @@ async function networkFirst(req, ms, preload) {
   }
 }
 async function staleWhileRevalidate(req, e) {
-  const hit = await caches.match(req);
+  const hit = await (await caches.open(SHELL)).match(req);
   const net = fetch(req).then(res => put(req, res)).catch(() => null);
   if (hit) { e.waitUntil(net); return hit; }
   return (await net) || (await cached(req)) || Response.error();
@@ -46,7 +46,7 @@ self.addEventListener('fetch', e => {
     if (url.pathname === '/sw.js') return;
     if (req.mode === 'navigate') {
       e.respondWith(networkFirst(req, 4500, e.preloadResponse).catch(async () =>
-        (await cached(req)) || (url.pathname === '/' ? null : await caches.match('/offline.html')) || (await caches.match('/')) || Response.error()));
+        (await cached(req)) || (url.pathname === '/' ? null : await cached(new Request('/offline.html'))) || (await cached(new Request('/'))) || Response.error()));
       return;
     }
     if (url.pathname.startsWith('/data/') && !url.pathname.endsWith('.csv')) { e.respondWith(networkFirst(req, 8000).catch(() => cached(req).then(r => r || Response.error()))); return; }
