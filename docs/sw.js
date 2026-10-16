@@ -2,7 +2,7 @@
    Pages and data: network first (so the weekly update shows straight away), cached copy when offline or slow.
    Scripts, icons, fonts, the map library: cached copy first, refreshed in the background.
    Mapbox map tiles and postcode lookups are never stored. */
-const VERSION = '439536a285';
+const VERSION = '35cd63589b';
 const SHELL = 'lvb-shell-' + VERSION, RUNTIME = 'lvb-runtime';
 const PRECACHE = ['/', '/app.js', '/config.js', '/pwa.js', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png',
   '/data/lgas.json', '/data/places.b64.txt', '/data/evidence.json', '/offline.html'];
