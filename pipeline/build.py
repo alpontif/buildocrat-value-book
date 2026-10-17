@@ -184,14 +184,22 @@ def land_class(kind, title):
     if 'commercial' in k or 'mixed' in k or re.search(r"commercial|filling station|petrol station|plaza|hotel site", t): return 'com'
     return 'res'
 
+# standard plot sizes by region (m2): 60x120 ft in the south-west, Lagos and Abuja; 50x100 ft in the east and
+# south-south; 100x100 ft in Edo; larger plots in the north
+STDPLOT = {s_: 650 for s_ in SC}
+STDPLOT.update({s_: 465 for s_ in ('AB','AN','EB','EN','IM','AK','BY','CR','DE','RI')}); STDPLOT['ED'] = 930
+STDPLOT.update({s_: 900 for s_ in ('KN','KD','SK','KT','KE','ZA','JI','YB','BR','BA','GM','AD','NI','TA','PL','NA','KW','KG','BE')})
 obs = []   # evidence observations: dict(st, lat,lng, label, level, metric, value, src)
-def add(st, g, metric, value, src):
-    obs.append({'st':st,'lat':g[0],'lng':g[1],'label':g[2],'level':g[3],'m':metric,'v':value,'src':src})
+def add(st, g, metric, value, src, cw=0):
+    o = {'st':st,'lat':g[0],'lng':g[1],'label':g[2],'level':g[3],'m':metric,'v':value,'src':src}
+    if cw: o['cw'] = 1   # located only to a whole city/town: a mix of that city's markets, not this exact spot
+    obs.append(o)
 
 EST_NAME = re.compile(r"^(.*?\b(?:estates?|gardens?|garden city|homes|villas?|residences?|courts?|scheme))\b(\s+phase\s+\w+)?", re.I)
 EST_LEAD = r"^.*\b(off|inside|within|in|by|behind|before|after|opposite|opp\.?|near|beside|along|around|facing|close to|at)\s+"
 BAD_EST = re.compile(r"\b(road|street|avenue|expressway|junction|plot|hotel|church|school|market|bus ?stop|hospital)\b", re.I)
 lst_est = collections.defaultdict(list)
+GENERIC_EST = re.compile(r"^(an?|secured|gated|private|fenced|serene|nice|beautiful|good|big|small|prime|this|our|my|well|fully|lovely|decent|standard)\b", re.I)
 # NPC land
 R = json.load(open(F('lb_npc_land.json'), encoding='utf-8'))
 seenh=set(); stats=collections.Counter()
@@ -209,7 +217,17 @@ for x in R:
     elif 'per hectare' in b: ppm = price/10000; size = size or 10000
     elif 'per sq.ft' in b: ppm = price*10.764
     elif size: ppm = price/size
-    else: stats['nosize']+=1; continue
+    else:
+        # Plots advertised without a size are mostly ordinary and estate plots; dropping them leaves the evidence
+        # skewed to big, premium plots that state their size. Use the region's standard plot instead.
+        std = STDPLOT.get(st, 650); t_ = (x.get('title') or '') + ' ' + (x.get('desc') or '')[:200]
+        mm = re.search(r"\b(\d{1,2}|two|three|four|five|six|ten)\s+plots\b", t_, re.I)
+        if 'per plot' in b: size = std
+        elif re.search(r"\bhalf\s+(a\s+)?plot\b", t_, re.I): size = std/2
+        elif mm: size = std*{'two':2,'three':3,'four':4,'five':5,'six':6,'ten':10}.get(mm.group(1).lower(), None or (int(mm.group(1)) if mm.group(1).isdigit() else 1))
+        elif re.search(r"\b(a|one|1)\s+plot\b|\bplot of land\b", t_, re.I): size = std
+        else: stats['nosize']+=1; continue
+        ppm = price/size; stats['stdplot']+=1
     if 'per plot' in b and not (150 <= size <= 1200): stats['badplot']+=1; continue
     if not (100 <= (size or 600) <= 5e6) or not (50 <= ppm <= 2.5e7): stats['range']+=1; continue
     if cls != 'farm' and size and size > 40000: cls = 'tract'
@@ -233,7 +251,7 @@ for x in R:
             rest = [s_ for s_ in raw[est_part+1:-1] if norm(s_) not in (norm(SC[st]), 'abuja', 'lagos')]
             loc_g = geocode(st, rest, near=base[:2] if base else CAP_LL[st], maxkm=25) if rest else None
             loc_g = loc_g or (g if g[3] != 'place' or norm(g[2]) != norm(nm) else None)
-            if loc_g and len(nm.split()) >= 2 and len(nm) <= 48 and not BAD_EST.search(nm):
+            if loc_g and len(nm.split()) >= 2 and len(nm) <= 48 and not BAD_EST.search(nm) and not GENERIC_EST.match(nm):
                 lst_est[(st, norm(nm))].append((loc_g[0], loc_g[1], nm))
 print('npc land', dict(stats))
 # estates known only from listing addresses: placed at the locality the listings give (approximate)
@@ -249,12 +267,45 @@ for (st, key), pts in lst_est.items():
     idx[(st, key)].append(len(places)-1)
 print('estates from listing addresses', n_le)
 
+# Listing titles name the neighbourhood ("plot at Old GRA", "Ogbeke Nike", "Independence Layout") even when the
+# listing's own location is only the city. Find the most specific known place named in the title, within 20 km.
+def nk(s):
+    s = norm(s); s = re.sub(r"\bg r a\b", "gra", s); return re.sub(r"\s+", " ", s).strip()
+tidx = collections.defaultdict(list)
+for j,p in enumerate(places): tidx[(p['st'], nk(p['name']))].append(j)
+TSTOP = set("""land lands plot plots sale for the of at in on by with and road street avenue close crescent way new old big small
+nice good dry fenced half full acre acres hectare hectares sqm sqms sqmts square metre metres meter meters c o cofo cof survey
+buy sell selling available direct owner price per rate distress cheap prime corner piece cornerpiece residential commercial
+building bungalow duplex house houses flat flats room rooms bedroom bedrooms uncompleted completed carcass storey quarters
+inside within near close beside behind off opposite along around before after junction bus stop market school church mosque
+area zone phase central north south east west upper lower first second third main major tarred untarred good title deed""".split())
+def title_geo(st, title, near, skip):
+    w = nk(title).split()
+    if not w or not near: return None
+    best = None
+    for n in (4, 3, 2, 1):
+        for i in range(len(w)-n+1):
+            gram = w[i:i+n]
+            if all(t in TSTOP or t.isdigit() for t in gram): continue
+            key = ' '.join(gram)
+            if key in skip or (n == 1 and len(key) < 5): continue
+            for j in tidx.get((st, key), []):
+                p = places[j]; d = hav(near[0], near[1], p['lat'], p['lng'])
+                if d > 20: continue
+                sc = (len(key), -d)
+                if best is None or sc > best[0]: best = (sc, (p['lat'], p['lng'], p['name'], 'place'))
+        if best: break
+    return best[1] if best else None
 # Jiji
 J = json.load(open(F('lb_jiji.json'), encoding='utf-8'))
 stats=collections.Counter(); rgeo={}
+ABJ = re.compile(r"\b(abuja|fcda|fct|amac|garki area)\b", re.I)
 for x in J:
     st = SLUG2C.get(x['st'])
     if not st or not x.get('p'): continue
+    # Jiji files Abuja's Garki district under Jigawa (which also has a Garki LGA); titles naming Abuja/FCDA are FCT
+    if st != 'FC' and ((st == 'JI' and (x.get('r') or '') == 'Garki') or ABJ.search(x.get('t') or '')):
+        x = dict(x, st='abuja', rp='Abuja (FCT) State'); st = 'FC'; stats['to_fct'] += 1
     key=(st, x.get('r'), x.get('rp'))
     if key not in rgeo:
         rp = x.get('rp') or ''
@@ -263,6 +314,15 @@ for x in J:
     g = rgeo[key]
     if not g: stats['nogeo']+=1; continue
     c = x['c']; p = x['p']; per = (x.get('per') or '').lower(); t = x.get('t') or ''
+    skip = {nk(x.get('r') or ''), nk(x.get('rp') or ''), nk(SC[st]), nk(CAPITAL[st]), nk(g[2])}
+    tg = title_geo(st, t, g[:2], skip)
+    cw = 0
+    if tg: g = tg; stats['title_geo']+=1
+    else:
+        stats['city_only']+=1
+        # a listing placed only at a city/town centre or an LGA centroid stands for that whole market
+        cw = 1 if g[3] == 'lga' or any(places[j]['type'] in ('city','town') and hav(g[0],g[1],places[j]['lat'],places[j]['lng']) < 1.0 for j in tidx.get((st, nk(g[2])), [])) else 0
+        stats['citywide']+=cw
     if c == 'ls':
         sqm = x.get('sqm')
         cls = land_class('', t)
@@ -272,22 +332,22 @@ for x in J:
         else: stats['ls_nosize']+=1; continue
         if not (50 <= ppm <= 2.5e7): stats['range']+=1; continue
         if cls != 'farm' and sqm and sqm > 40000: cls='tract'
-        add(st, g, {'res':'land_res','com':'land_com','ind':'land_ind','farm':'land_farm','tract':'land_tract'}[cls], ppm, 'jiji'); stats['ls']+=1
+        add(st, g, {'res':'land_res','com':'land_com','ind':'land_ind','farm':'land_farm','tract':'land_tract'}[cls], ppm, 'jiji', cw); stats['ls']+=1
     elif c == 'hr':
         b = x.get('b')
         mult = {'per annum':1,'':1,'per month':12,'per half-year':2,'per quarter':4}.get(per)
         if not mult or not b: continue
         rent = p*mult
         if not (1.0e5 <= rent <= 3e8): continue
-        if b in (1,2,3,4): add(st, g, f'rent{b}', rent, 'jiji'); stats['hr']+=1
+        if b in (1,2,3,4): add(st, g, f'rent{b}', rent, 'jiji', cw); stats['hr']+=1
     elif c == 'hs':
         b = x.get('b')
-        if b in (2,3,4,5) and 2e6 <= p <= 1e10: add(st, g, f'sale{b}', p, 'jiji'); stats['hs']+=1
+        if b in (2,3,4,5) and 2e6 <= p <= 1e10: add(st, g, f'sale{b}', p, 'jiji', cw); stats['hs']+=1
     elif c in ('crc','csc'):
         sqm = x.get('sqm')
         if sqm and 10 <= sqm <= 20000 and re.search(r"rent|let|lease", t, re.I) and not re.search(r"sale", t, re.I):
             v = p/sqm
-            if 500 <= v <= 5e5: add(st, g, 'com_rent_m2', v, 'jiji'); stats['crent']+=1
+            if 500 <= v <= 5e5: add(st, g, 'com_rent_m2', v, 'jiji', cw); stats['crent']+=1
 print('jiji', dict(stats))
 
 # NPC average-price tables (locality medians, each weighted by its listing count)

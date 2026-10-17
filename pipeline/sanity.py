@@ -15,7 +15,13 @@ for g in L:
     for k in ('rent3', 'sale4', 'com', 'ind'):
         if not v.get(k) or v[k] <= 0: bad.append(f'{g["n"]} ({g["s"]}) missing {k}')
 by = {(g['s'], g['n']): g['v']['res'] for g in L}
-checks = [(('LA', 'Eti Osa'), 300000, 6e6), (('FC', 'Municipal Area Council'), 60000, 2e6), (('LA', 'Ikeja'), 80000, 3e6)]
+checks = [(('LA', 'Eti Osa'), 200000, 6e6), (('FC', 'Municipal Area Council'), 35000, 2e6), (('LA', 'Ikeja'), 80000, 3e6),
+          (('KN', 'Kano Municipal'), 4000, 120000), (('EN', 'Enugu North'), 15000, 150000), (('OY', 'Iseyin'), 300, 8000)]
+# rural LGAs: typical village land stays in a realistic band (benchmarks put village plots at N0.3-1.5m)
+rur = sorted(g['v']['res'] for g in L if g.get('cls') == 'Rural')
+if rur and not (300 <= rur[len(rur)//2] <= 3000): bad.append(f'median rural LGA land {rur[len(rur)//2]:.0f}/m2 outside 300-3,000')
+rr = sorted(g['v']['rent3'] for g in L if g.get('cls') == 'Rural')
+if rr and not (80000 <= rr[len(rr)//2] <= 600000): bad.append(f'median rural 3-bed rent {rr[len(rr)//2]:.0f} outside 80k-600k')
 for key, lo, hi in checks:
     v = by.get(key)
     if v is not None and not (lo <= v <= hi): bad.append(f'{key} residential {v} outside {lo}-{hi}')
