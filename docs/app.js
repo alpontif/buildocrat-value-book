@@ -666,6 +666,7 @@ function shared(){
 (async()=>{
   readColors();
   try{ await load(); }catch(err){ $('panel').innerHTML='<p class="note">The data files did not load. Reload the page to try again.</p>'; return; }
+  dispatchEvent(new Event('lvb:data'));
   FX=META.fx||FX; BUILD=META.build||BUILD;
   $('edDate').textContent=dlong(META.date); $('edFx').textContent=FX.toLocaleString('en-NG'); $('sDate').textContent=dlong(META.date);
   $('buildRate').textContent=fmt(BUILD); document.querySelectorAll('.evDate').forEach(e=>e.textContent=dlong(META.date));

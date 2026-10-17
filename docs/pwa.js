@@ -1,7 +1,17 @@
 /* Install-as-app support for every page: registers the service worker and drives the "Install app" buttons ([data-install]). */
 (() => {
   'use strict';
-  if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {}));
+  if ('serviceWorker' in navigator) {
+    addEventListener('load', () => navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {}));
+    // keep this page and everything it loaded for offline use, once loading is finished (home page: once the data is in)
+    const warm = () => navigator.serviceWorker.ready.then(reg => {
+      const urls = [location.pathname + location.search, ...performance.getEntriesByType('resource').map(r => r.name)]
+        .filter(u => { try { const x = new URL(u, location.href); return x.origin === location.origin && !/\/sw\.js$/.test(x.pathname); } catch (e) { return false; } });
+      if (reg.active) reg.active.postMessage({ t: 'warm', urls: [...new Set(urls)] });
+    }).catch(() => {});
+    if (document.getElementById('panel')) addEventListener('lvb:data', () => setTimeout(warm, 1500), { once: true });
+    else addEventListener('load', () => setTimeout(warm, 1500), { once: true });
+  }
   const ua = navigator.userAgent;
   const standalone = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches || navigator.standalone === true;
   const ios = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);

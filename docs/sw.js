@@ -2,13 +2,14 @@
    Pages and data: network first (so the weekly update shows straight away), cached copy when offline or slow.
    Scripts, icons, fonts, the map library: cached copy first, refreshed in the background.
    Mapbox map tiles and postcode lookups are never stored. */
-const VERSION = '5b68de8223';
+const VERSION = '4140454c99';
 const SHELL = 'lvb-shell-' + VERSION;  // one cache per edition; the old one is deleted when a new edition activates
-const PRECACHE = ['/', '/app.js', '/config.js', '/pwa.js', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png', '/icons/icon-512.png',
-  '/data/lgas.json', '/data/places.b64.txt', '/data/evidence.json', '/offline.html'];
+// Only small files at install. The page's own files and the data are added after the page has loaded them
+// (message 'warm' from pwa.js), straight from the browser's HTTP cache, so a first visit never downloads them twice.
+const PRECACHE = ['/offline.html', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(SHELL).then(c => Promise.all(PRECACHE.map(u => c.add(new Request(u, { cache: 'reload' })).catch(() => {})))));
+  e.waitUntil(caches.open(SHELL).then(c => Promise.all(PRECACHE.map(u => c.add(u).catch(() => {})))));
   self.skipWaiting();
 });
 self.addEventListener('activate', e => {
@@ -57,4 +58,17 @@ self.addEventListener('fetch', e => {
   if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com' || (url.hostname === 'api.mapbox.com' && url.pathname.startsWith('/mapbox-gl-js/')))
     e.respondWith(staleWhileRevalidate(req, e));
 });
-self.addEventListener('message', e => { if (e.data === 'skipWaiting') self.skipWaiting(); });
+self.addEventListener('message', e => {
+  if (e.data === 'skipWaiting') return self.skipWaiting();
+  if (e.data && e.data.t === 'warm' && Array.isArray(e.data.urls)) e.waitUntil((async () => {
+    const c = await caches.open(SHELL);
+    for (const u of e.data.urls.slice(0, 60)) {
+      try {
+        const url = new URL(u, location.origin); if (url.origin !== location.origin || url.pathname === '/sw.js') continue;
+        if (await c.match(url.href)) continue;
+        const res = await fetch(url.href, { cache: 'force-cache' });   // served from the HTTP cache the page just filled
+        if (res.ok) await c.put(url.href, res);
+      } catch (err) {}
+    }
+  })());
+});
