@@ -73,13 +73,33 @@ def wa_button(text, label='Chat on WhatsApp'):
 def faq_ld(qas): return {"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in qas]}
 def faq_html(qas): return '<h2>Questions people ask</h2><div class="faq">' + ''.join(f'<h3>{e(q)}</h3><p>{e(a)}</p>' for q, a in qas) + '</div>'
 
+GA = """<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-BLGWN0LVSG"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-BLGWN0LVSG');
+</script>
+<script>
+document.addEventListener('click', function (e) {
+  var a = e.target && e.target.closest && e.target.closest('a');
+  if (!a || !a.href) return;
+  var u = a.href;
+  if (u.indexOf('wa.me') !== -1 || u.indexOf('api.whatsapp.com') !== -1) gtag('event', 'whatsapp_click', {link_url: u});
+  else if (u.indexOf('mailto:') === 0) gtag('event', 'email_click', {link_url: u});
+});
+</script>
+"""
+
 def page(path, title, desc, body, crumbs, extra_ld=(), wa_text=None):
     canon = SITE + path
     graph = [{"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": i + 1, "name": n, "item": SITE + u} for i, (n, u) in enumerate(crumbs)]},
              {"@type": "WebPage", "@id": canon, "url": canon, "name": title, "description": desc, "dateModified": META['date'], "inLanguage": "en-NG",
               "isPartOf": {"@id": SITE + "#website"}, "publisher": {"@id": SITE + "#org"}}] + list(extra_ld)
     ld = {"@context": "https://schema.org", "@graph": graph}
-    out = f"""<!doctype html><html lang="en-NG"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    out = f"""<!doctype html><html lang="en-NG"><head>{GA}<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{e(title)}</title><meta name="description" content="{e(desc)}"><link rel="canonical" href="{canon}">
 <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
 <meta property="og:type" content="website"><meta property="og:site_name" content="Buildocrat Land Value Book"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(desc)}"><meta property="og:url" content="{canon}"><meta property="og:image" content="{SITE}og.png">
@@ -338,7 +358,7 @@ idx = os.path.join(DOCS, 'index.html'); h = open(idx, encoding='utf-8').read()
 WEBSITE = {"@type": "WebSite", "@id": SITE + "#website", "url": SITE, "name": "Nigeria Land Value Book", "publisher": {"@id": SITE + "#org"}, "inLanguage": "en-NG"}
 APP = {"@type": "WebApplication", "name": "Nigeria Land Value Book", "url": SITE, "applicationCategory": "BusinessApplication", "operatingSystem": "Android, iOS, Windows, macOS, ChromeOS, Linux", "browserRequirements": "Requires a modern web browser; installs as a progressive web app", "installUrl": SITE, "downloadUrl": SITE, "softwareVersion": META["date"], "screenshot": SITE + "icons/screen-wide.png", "featureList": ["Land, building and rental values for every state, LGA, town and estate in Nigeria", "Satellite value map with NIPOST postcodes", "Value at any coordinates or shared Google Maps pin", "Works offline with the latest weekly values", "WhatsApp contact"], "offers": {"@type": "Offer", "price": "0", "priceCurrency": "NGN"}}
 ver = ''.join(f'<meta name="{n}" content="{e(CFG[k])}">' for k, n in (('google_site_verification', 'google-site-verification'), ('bing_site_verification', 'msvalidate.01')) if CFG.get(k))
-head = (f'<!--SEO:HEAD--><meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">{ver}'
+head = (f'<!--SEO:HEAD-->{GA}<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">{ver}'
         f'<meta property="og:image" content="{SITE}og.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="{SITE}og.png">'
         f'<link rel="alternate" type="text/plain" title="LLM summary" href="/llms.txt">'
         f'<script type="application/ld+json">{json.dumps({"@context": "https://schema.org", "@graph": [WEBSITE, ORG, DATASET, APP, faq_ld(GQ[:6])]}, ensure_ascii=False)}</script><!--/SEO:HEAD-->')
