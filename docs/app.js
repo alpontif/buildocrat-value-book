@@ -86,10 +86,24 @@ function ingestPlaces(chunk){
     if(!known) indexPlace(id, lo, la);
   }
 }
-let placePri='high';
+let placePri='low';
+// Mapbox, the summary and the LGA outlines use the line first. Place chunks are
+// requested in the same boot, and start as soon as that shell has arrived.
+let shellP=null;
+function mapShell(){
+  if(shellP) return shellP;
+  shellP=(async()=>{
+    const jobs=[loadSummary(), ensureGeo()];
+    if(NP().mapboxToken) jobs.push(loadMapbox().catch(()=>{}));
+    await Promise.all(jobs);
+  })();
+  return shellP;
+}
 function ensureWards(){
   if(PL && PL.W && PL.W.length) return Promise.resolve();
-  if(!wardsP) wardsP=gunzipJson(manifest().wards, placePri).then(w=>{ allocPL(); PL.W=w; });
+  if(!wardsP){
+    wardsP=(async()=>{ await mapShell(); const w=await gunzipJson(manifest().wards, placePri); await loadSummary(); allocPL(); PL.W=w; })();
+  }
   return wardsP;
 }
 function ensureStatePlaces(st){
@@ -97,10 +111,10 @@ function ensureStatePlaces(st){
   if(stateP.has(st)) return stateP.get(st);
   const pri=placePri;
   const p=(async()=>{
-    await loadSummary();
-    const url=manifest().places[st];
+    await mapShell();
+    const chunk=await gunzipJson(manifest().places[st], pri);
     await ensureWards();
-    ingestPlaces(await gunzipJson(url, pri));
+    ingestPlaces(chunk);
     loadedStates.add(st);
     if(loadedStates.size===Object.keys(manifest().places).length){ placesReady=true; window.__lbPlacesReady=1; buildSearch(); dispatchEvent(new Event('lvb:places')); }
   })();
@@ -114,8 +128,10 @@ function ensurePlaces(){
 }
 function ensureGeo(){
   if(geoP) return geoP;
+  const bytes=Promise.all(Object.values(manifest().geo).map(u=>gunzipJson(u,'high')));
   geoP=(async()=>{
-    const parts=await Promise.all(Object.values(manifest().geo).map(u=>gunzipJson(u,'high')));
+    const parts=await bytes;
+    await loadSummary();
     BORDERS=[];
     for(const p of parts){ for(const g of p.r) LG[g.i].r=g.r; for(const b of p.b||[]) BORDERS.push(b); }
     LGR=null;
@@ -126,7 +142,7 @@ function ensureGeo(){
 }
 function ensureEvidence(){
   if(EV.length) return Promise.resolve();
-  if(!evP) evP=gunzipJson(manifest().evidence, placePri).then(e=>{ EV=e; });
+  if(!evP) evP=(async()=>{ await mapShell(); EV=await gunzipJson(manifest().evidence, placePri); })();
   return evP;
 }
 function statesInBox(lat0,lng0,lat1,lng1){
@@ -296,101 +312,12 @@ canvas.addEventListener('pointerleave',()=>{ tip.hidden=true; if(hoverL>=0){hove
 canvas.addEventListener('wheel',e=>{ e.preventDefault(); const r=canvas.getBoundingClientRect(); zoomAt(e.deltaY<0?1.25:0.8,e.clientX-r.left,e.clientY-r.top); },{passive:false});
 canvas.addEventListener('dblclick',e=>{ const r=canvas.getBoundingClientRect(); zoomAt(2,e.clientX-r.left,e.clientY-r.top); });
 function zoomAt(f,px,py){ const ns=Math.max(25,Math.min(9000,view.s*f)); f=ns/view.s; view.tx=px-(px-view.tx)*f; view.ty=py-(py-view.ty)*f; view.s=ns; draw(); syncViewPlaces(); }
-const svgMap=$('mapsvg');
-function svgVB(){ const p=(svgMap.getAttribute('viewBox')||'').trim().split(/[\s,]+/).map(Number); return {x:p[0],y:p[1],w:p[2],h:p[3]}; }
-function svgSet(vb){ svgMap.setAttribute('viewBox',vb.x+' '+vb.y+' '+vb.w+' '+vb.h); }
-function svgHome(){ return (svgMap.dataset.vb||'').trim().replace(/\s+/g,' '); }
-function svgOn(){ return svgMap && !svgMap.hidden && !$('mapcard').classList.contains('mb') && canvas.hidden; }
-function svgZoom(f,px,py){
-  if(!svgOn()) return;
-  const vb=svgVB(); const r=svgMap.getBoundingClientRect(); if(!r.width||!r.height) return;
-  const fx=px==null?0.5:px/r.width, fy=py==null?0.5:py/r.height;
-  const nw=Math.max(0.18, Math.min(vb.w*f, 20));
-  const nh=nw*(vb.h/vb.w);
-  const cx=vb.x+vb.w*fx, cy=vb.y+vb.h*fy;
-  svgSet({x:cx-nw*fx, y:cy-nh*fy, w:nw, h:nh});
-}
-function svgFit(){ if(svgOn()) svgMap.setAttribute('viewBox', svgMap.dataset.vb); }
-function svgFitBox(b){
-  if(!svgOn()||!b||!(b.width>0)) return;
-  const home=(svgMap.dataset.vb||'').trim().split(/[\s,]+/).map(Number);
-  const aspect=(home[2]||12.15)/(home[3]||10.05);
-  const pad=0.18*Math.max(b.width,b.height,0.35);
-  let w=b.width+pad*2, h=b.height+pad*2;
-  if(w/h>aspect) h=w/aspect; else w=h*aspect;
-  const cx=b.x+b.width/2, cy=b.y+b.height/2;
-  svgSet({x:cx-w/2, y:cy-h/2, w, h});
-}
-function svgFitLGA(i){ const p=svgMap&&svgMap.querySelector('path[data-lga="'+i+'"]'); if(p) svgFitBox(p.getBBox()); }
-function svgFitState(c){ const p=svgMap&&svgMap.querySelector('path.stb[data-st="'+c+'"]'); if(p) svgFitBox(p.getBBox()); }
-function svgFlyPlace(la,lo){ if(!svgOn()) return; const x=lo*CX, y=-la; const home=(svgMap.dataset.vb||'').trim().split(/[\s,]+/).map(Number); const aspect=(home[2]||12.15)/(home[3]||10.05); const w=1.5, h=w/aspect; svgSet({x:x-w/2,y:y-h/2,w,h}); }
-function svgMark(){
-  if(!svgMap) return;
-  svgMap.querySelectorAll('path.on').forEach(p=>p.classList.remove('on'));
-  if(selL>=0){ const p=svgMap.querySelector('path[data-lga="'+selL+'"]'); if(p) p.classList.add('on'); }
-}
-function paintSvgLayer(){
-  if(!svgMap||svgMap.hidden||!LG.length||!breaks[layer]) return;
-  svgMap.querySelectorAll('path[data-lga]').forEach(p=>{
-    const g=LG[+p.dataset.lga]; if(!g) return;
-    const c=cls(layer, g.v[layer]);
-    if(layer==='zone'){ p.style.fill=c<0?'var(--nd)':ZONEC[c]; }
-    else { p.style.fill=''; p.setAttribute('class','s'+Math.max(0,Math.min(6,c))+(p.classList.contains('on')?' on':'')); }
-  });
-}
-function handoffSvg(){
-  if(!svgMap||svgMap.hidden||MAPI.kind!=='mapbox') return;
-  const now=(svgMap.getAttribute('viewBox')||'').trim().replace(/\s+/g,' ');
-  if(now && now!==svgHome()){
-    const [x,y,w,h]=now.split(/[\s,]+/).map(Number);
-    const lng0=x/CX, lat1=-y, lng1=(x+w)/CX, lat0=-(y+h);
-    MAPI.fitLL(Math.min(lat0,lat1), Math.min(lng0,lng1), Math.max(lat0,lat1), Math.max(lng0,lng1));
-  }
-}
-function bindSvg(){
-  if(!svgMap) return;
-  window.__lbSvg=1;
-  let origin=null, moved=false;
-  svgMap.addEventListener('pointerdown',e=>{
-    if(e.button>0) return;
-    svgMap.setPointerCapture(e.pointerId);
-    origin={x:e.clientX,y:e.clientY,vb:svgVB()}; moved=false; svgMap.classList.add('drag');
-  });
-  svgMap.addEventListener('pointermove',e=>{
-    const r=svgMap.getBoundingClientRect();
-    if(origin){
-      const dx=e.clientX-origin.x, dy=e.clientY-origin.y;
-      if(Math.abs(dx)+Math.abs(dy)>4) moved=true;
-      if(moved){ const vb=origin.vb; svgSet({x:vb.x-dx/r.width*vb.w, y:vb.y-dy/r.height*vb.h, w:vb.w, h:vb.h}); tip.hidden=true; }
-      return;
-    }
-    if(!LG.length) return;
-    const city=e.target.closest&&e.target.closest('[data-place]');
-    const path=e.target.closest&&e.target.closest('[data-lga]');
-    const px=e.clientX-r.left, py=e.clientY-r.top;
-    if(city && PL && PL.have && PL.have[+city.dataset.place]) tip.innerHTML=tipPlace(+city.dataset.place);
-    else if(path) tip.innerHTML=tipLGA(+path.dataset.lga);
-    else { tip.hidden=true; return; }
-    tip.hidden=false; let x=px+14, y=py+12; if(x>r.width-250) x=px-250; if(y>r.height-90) y=py-80; tip.style.left=x+'px'; tip.style.top=y+'px';
-  });
-  const endSvg=()=>{ origin=null; svgMap.classList.remove('drag'); };
-  svgMap.addEventListener('pointerup',e=>{
-    const was=moved; endSvg(); if(was) return;
-    const city=e.target.closest&&e.target.closest('[data-place]');
-    if(city){ selectPlace(+city.dataset.place, true, city.dataset.st); return; }
-    const path=e.target.closest&&e.target.closest('[data-lga]');
-    if(path) selectLGA(+path.dataset.lga);
-  });
-  svgMap.addEventListener('pointercancel',endSvg);
-  svgMap.addEventListener('pointerleave',()=>{ tip.hidden=true; });
-  svgMap.addEventListener('wheel',e=>{ if(!svgOn()) return; e.preventDefault(); const r=svgMap.getBoundingClientRect(); svgZoom(e.deltaY<0?1/1.25:1.25, e.clientX-r.left, e.clientY-r.top); },{passive:false});
-}
-$('zin').onclick=()=>{ if(svgOn()) svgZoom(1/1.35); else ensureMap().then(()=>MAPI.zoom(1.6)); };
-$('zout').onclick=()=>{ if(svgOn()) svgZoom(1.35); else ensureMap().then(()=>MAPI.zoom(1/1.6)); };
-$('zall').onclick=()=>{ if(svgOn()) svgFit(); else ensureMap().then(()=>MAPI.fitAll()); };
+$('zin').onclick=()=>MAPI.zoom(1.6);
+$('zout').onclick=()=>MAPI.zoom(1/1.6);
+$('zall').onclick=()=>MAPI.fitAll();
 /* canvas map behind the common map interface (used when no Mapbox token is configured) */
 function lgaBox(i){ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; for(const enc of LG[i].r) for(const [lng,lat] of decode(enc)){ x0=Math.min(x0,lng);x1=Math.max(x1,lng);y0=Math.min(y0,lat);y1=Math.max(y1,lat);} return [y0,x0,y1,x1]; }
-const CANVAS_MAP={ kind:'canvas', refresh(){ draw(); paintSvgLayer(); svgMark(); }, fitAll:()=>fitAll(), fitLL:(a,b,c,d)=>fitLL(a,b,c,d),
+const CANVAS_MAP={ kind:'canvas', refresh(){ draw(); }, fitAll:()=>fitAll(), fitLL:(a,b,c,d)=>fitLL(a,b,c,d),
   fitLGA(i){ const [a,b,c,d]=lgaBox(i); const p=0.15*Math.max(c-a,d-b); fitLL(a-p,b-p,c+p,d+p); },
   flyPlace(la,lo,t){ const [X,Y]=W2(lo,la); const r=canvas.getBoundingClientRect(); view.s=Math.max(view.s, t<=1?420:900); view.tx=r.width/2-X*view.s; view.ty=r.height/2-Y*view.s; draw(); syncViewPlaces(); },
   zoom(f){ const r=canvas.getBoundingClientRect(); zoomAt(f,r.width/2,r.height/2); },
@@ -454,7 +381,7 @@ const waHref=s=>`https://wa.me/${WA_NO}?text=${encodeURIComponent(waText(s))}`;
 function setSel(s){ SEL=s; estimate(); const a=$('wa'); if(a) a.href=waHref(s); }
 function paintPlacePreview(j){
   const g=LG[PL.g[j]], la=PL.la[j]/1e4, lo=PL.lo[j]/1e4, v=placeVals(j), t=PL.t[j], plot=g.plot||600;
-  selL=PL.g[j]; selState=null; selPt=[la,lo]; svgMark(); svgFlyPlace(la,lo);
+  selL=PL.g[j]; selState=null; selPt=[la,lo];
   const base=TAB==='land'?`LGA median ${short(g.v.res)}/m\u00b2.`:TAB==='bld'?`LGA typical ${short(g.v.sale4)}.`:`LGA typical ${short(g.v.rent3)} a year.`;
   $('panel').innerHTML=`${crumbs([['Nigeria','ng'],[SC[g.s],'s:'+g.s],[g.n+' LGA','l:'+PL.g[j]],[PL.n[j],null]])}
    <div class="ptitle"><div><h3>${esc(PL.n[j])}</h3><div class="tags"><span class="tag ${URBAN_T.has(t)?'u':''}">${URBAN_T.has(t)?'Urban':'Rural'} \u00b7 ${TYPEN[t]}</span><span class="tag">${g.cls} LGA</span></div></div>${confPill(PL.c[j])}</div>
@@ -475,8 +402,8 @@ async function selectPlace(j,fly=true,st){
   if(!(PL&&PL.full&&PL.full[j])) return;
   try{ await ensureEvidence(); }catch(e){}
   const g=LG[PL.g[j]], la=PL.la[j]/1e4, lo=PL.lo[j]/1e4, v=placeVals(j), t=PL.t[j], plot=g.plot||600;
-  selL=PL.g[j]; selState=null; selPt=[la,lo]; svgMark();
-  if(fly){ svgFlyPlace(la,lo); ensureMap().then(()=>MAPI.flyPlace(la,lo,DRANK[t])); }
+  selL=PL.g[j]; selState=null; selPt=[la,lo];
+  if(fly) ensureMap().then(()=>MAPI.flyPlace(la,lo,DRANK[t]));
   if(lgaPaths.length||MAPI.kind==='mapbox') MAPI.refresh();
   const anc=ancestors(j), kids=(PL.ch.get(j)||[]).slice().sort((a,b)=>PL.t[b]-PL.t[a]||PL.v[b]-PL.v[a]);
   const base=TAB==='land'?`LGA median ${short(g.v.res)}/m\u00b2.`:TAB==='bld'?`LGA typical ${short(g.v.sale4)}.`:`LGA typical ${short(g.v.rent3)} a year.`;
@@ -532,8 +459,6 @@ async function selectLGA(i,fly=true){
    <p class="note">NIPOST postcodes in ${esc(SC[g.s])} start <b class="mono">${g.s}</b>. Click a street or house on the map for its own postcode and values.</p>
    <div id="lgaPlaceBlock"></div>`;
   setSel({kind:'lga',name:g.n+' LGA, '+SC[g.s],lat:g.lat,lng:g.lng,st:g.s,v:g.v,plot:g.plot||600,conf:g.conf});
-  svgMark();
-  if(fly) svgFitLGA(i);
   if(fly) ensureMap().then(()=>{ if(panelGen!==gen) return; MAPI.fitLGA(i); MAPI.refresh(); });
   else if(lgaPaths.length||MAPI.kind==='mapbox') MAPI.refresh();
   try{ await ensureStatePlaces(g.s); }catch(e){ return; }
@@ -554,7 +479,7 @@ function selectState(c,fly=true){
   if(STI[c]==null) return loadSummary().then(()=>selectState(c,fly));
   RER=()=>selectState(c,false);
   const s=ST[STI[c]]; selState=c; selL=-1; selPt=null;
-  if(fly){ const b=s.bb; svgFitState(c); ensureMap().then(()=>{ MAPI.fitLL(b[1],b[0],b[3],b[2]); MAPI.refresh(); }); }
+  if(fly){ const b=s.bb; ensureMap().then(()=>{ MAPI.fitLL(b[1],b[0],b[3],b[2]); MAPI.refresh(); }); }
   else if(lgaPaths.length||MAPI.kind==='mapbox') MAPI.refresh();
   const hk=TABS[TAB].head;
   const lg=LG.map((g,i)=>[g,i]).filter(([g])=>g.s===c).sort((a,b)=>(b[0].v[hk]||0)-(a[0].v[hk]||0));
@@ -568,15 +493,14 @@ function selectState(c,fly=true){
 function nationalPanel(){
   RER=()=>nationalPanel();
   selState=null; selL=-1; selPt=null;
-  svgFit(); svgMark();
   if(lgaPaths.length||MAPI.kind==='mapbox') MAPI.refresh();
   const hk=TABS[TAB].head, hn=TABS[TAB].layers.find(l=>l[0]===hk)[1].toLowerCase();
   const top=[...LG.keys()].sort((a,b)=>(LG[b].v[hk]||0)-(LG[a].v[hk]||0)).slice(0,8);
   const nPl=(META.nPlaces||0).toLocaleString('en-NG');
   $('panel').innerHTML=`<div class="ptitle"><div><h3>Nigeria</h3><div class="tags"><span class="tag">37 states</span><span class="tag">774 LGAs</span><span class="tag">${nPl} places</span></div></div></div>
+   <p class="note">Click a state, an LGA, a dot or any house on the map, or enter coordinates above. Switch between land, building and rental values with the tabs. Each result gives the NIPOST postcode for the exact spot.</p>
    <div><p class="eyebrow" style="margin-bottom:4px">Highest LGAs, ${hn}</p><table class="mini">${top.map(i=>`<tr><td><button type="button" data-lga="${i}">${esc(LG[i].n)}</button> <span class="muted small">${LG[i].s}</span></td><td class="r">${fmtL(hk,LG[i].v[hk])}</td></tr>`).join('')}</table></div>
-   <div><p class="eyebrow" style="margin-bottom:4px">States, capital city</p><table class="mini">${[...ST].sort((a,b)=>(b.v[hk]||0)-(a.v[hk]||0)).map(s=>`<tr><td><button type="button" data-go="s:${s.c}">${esc(SC[s.c])}</button> <span class="muted small">${esc(s.cap)}</span></td><td class="r">${fmtL(hk,s.v[hk])}</td></tr>`).join('')}</table></div>
-   <p class="note">Click a state, an LGA, a dot or any house on the map, or enter coordinates above. Switch between land, building and rental values with the tabs. Each result gives the NIPOST postcode for the exact spot.</p>`;
+   <div><p class="eyebrow" style="margin-bottom:4px">States, capital city</p><table class="mini">${[...ST].sort((a,b)=>(b.v[hk]||0)-(a.v[hk]||0)).map(s=>`<tr><td><button type="button" data-go="s:${s.c}">${esc(SC[s.c])}</button> <span class="muted small">${esc(s.cap)}</span></td><td class="r">${fmtL(hk,s.v[hk])}</td></tr>`).join('')}</table></div>`;
 }
 $('panel').addEventListener('click',e=>{
   const b=e.target.closest('[data-go],[data-place],[data-lga],[data-copy],[data-sat],[data-pcgo]'); if(!b) return;
@@ -829,13 +753,14 @@ async function showPostcode(p){
 }
 
 /* ---------- Mapbox GL satellite map ---------- */
-function loadMapbox(){ return new Promise((ok,no)=>{ if(window.mapboxgl) return ok();
+let mapboxLibP=null;
+function loadMapbox(){ if(mapboxLibP) return mapboxLibP; return mapboxLibP=new Promise((ok,no)=>{ if(window.mapboxgl) return ok();
   const v='3.10.0';
-  if(!document.querySelector('link[href*="mapbox-gl.css"]')){ const l=document.createElement('link'); l.rel='stylesheet'; l.href=`https://api.mapbox.com/mapbox-gl-js/v${v}/mapbox-gl.css`; l.fetchPriority='high'; document.head.appendChild(l); }
+  if(!document.querySelector('link[rel="stylesheet"][href*="mapbox-gl.css"]')){ const l=document.createElement('link'); l.rel='stylesheet'; l.href=`https://api.mapbox.com/mapbox-gl-js/v${v}/mapbox-gl.css`; l.fetchPriority='high'; document.head.appendChild(l); }
   const s=document.createElement('script'); s.src=`https://api.mapbox.com/mapbox-gl-js/v${v}/mapbox-gl.js`; s.fetchPriority='high'; s.onload=()=>ok(); s.onerror=no; document.head.appendChild(s); }); }
 function MapboxMap(){
   const c=NP(); mapboxgl.accessToken=c.mapboxToken;
-  const el=$('mbmap'); canvas.hidden=true; el.classList.add('warming');
+  const el=$('mbmap'); el.hidden=false; canvas.hidden=true; $('mapcard').classList.add('mb'); $('basemap').hidden=false;
   const NG=[[2.65,4.2],[14.7,13.9]];
   let sat=true, curLayer=null, selShown=-1, hoverShown=-1, marker=null, plTimer=0;
   const map=new mapboxgl.Map({container:el, style:c.styleSatellite||'mapbox://styles/mapbox/satellite-streets-v12', bounds:NG, fitBoundsOptions:{padding:16}, maxBounds:[[-4,0],[22,18]], projection:'mercator', attributionControl:true});
@@ -875,7 +800,7 @@ function MapboxMap(){
     curLayer=layer; selShown=-1; hoverShown=-1; api.refresh();
   }
   map.on('style.load',addLayers);
-  map.once('idle',()=>{ handoffSvg(); el.classList.remove('warming'); $('mapcard').classList.add('mb'); $('basemap').hidden=false; map.resize(); });
+  map.once('idle',()=>{ map.resize(); });
   map.on('moveend',()=>{ clearTimeout(plTimer); plTimer=setTimeout(()=>{
     const z=map.getZoom(), b=map.getBounds();
     const pending=z<6.2?Promise.resolve():Promise.all(statesInBox(b.getSouth(),b.getWest(),b.getNorth(),b.getEast()).map(ensureStatePlaces));
@@ -936,7 +861,7 @@ async function shared(){
   $('pinq').value=txt.slice(0,300); $('pinmsg').textContent='No coordinates found in what was shared. In Google Maps, drop a pin and share that pin, or paste the coordinates here.'; $('pinform').scrollIntoView({block:'center'}); return false;
 }
 
-/* ---------- open the map only when it is on screen or the reader asks ---------- */
+/* ---------- map ---------- */
 let viewTok=0, mapP=null, canvasSized=false;
 function syncViewPlaces(){
   if(!MAN||!PL||MAPI.kind==='mapbox'||view.s<90) return;
@@ -947,8 +872,8 @@ function syncViewPlaces(){
   Promise.all(need.map(ensureStatePlaces)).then(()=>{ if(tok===viewTok && MAPI.kind==='canvas') draw(); });
 }
 function useCanvas(){
-  MAPI=CANVAS_MAP; const mb=$('mbmap'); if(mb){ mb.hidden=true; mb.classList.remove('warming'); }
-  $('mapcard').classList.remove('mb'); canvas.hidden=false; if(svgMap) svgMap.hidden=true;
+  MAPI=CANVAS_MAP; const mb=$('mbmap'); if(mb) mb.hidden=true;
+  $('mapcard').classList.remove('mb'); canvas.hidden=false;
   resize(); fitAll();
   if(!canvasSized){ canvasSized=true; new ResizeObserver(()=>resize()).observe(canvas); }
 }
@@ -957,9 +882,8 @@ function ensureMap(){
   mapP=(async()=>{
     const tok=NP().mapboxToken;
     const lib=tok?loadMapbox():Promise.resolve();
-    await loadSummary();
     const geo=ensureGeo();
-    await Promise.all([lib, geo]);
+    await Promise.all([loadSummary(), geo, lib]);
     readColors();
     $('mapcard').classList.add('on');
     if(tok){
@@ -972,20 +896,14 @@ function ensureMap(){
   })().catch(err=>{ mapP=null; throw err; });
   return mapP;
 }
-function startPlaceFetch(){
-  placePri='low';
-  ensurePlaces().catch(()=>{});
-  ensureEvidence().catch(()=>{});
-}
-
 /* ---------- boot ---------- */
 (async()=>{
   readColors();
-  bindSvg();
   window.__lbPlacesReady=0;
   const summaryReady=loadSummary();
   ensureMap().catch(err=>console.warn('Map did not start', err));
-  summaryReady.then(()=>{ paintSvgLayer(); setTimeout(startPlaceFetch, 40); });
+  ensurePlaces().catch(()=>{});
+  ensureEvidence().catch(()=>{});
   try{ await summaryReady; }catch(err){ console.warn('Summary did not load; the printed figures stay on the page.', err); return; }
   dispatchEvent(new Event('lvb:data'));
   FX=META.fx||FX; BUILD=META.build||BUILD;

@@ -89,7 +89,7 @@ def page(path, title, desc, body, crumbs, extra_ld=(), wa_text=None):
 <meta property="og:type" content="website"><meta property="og:site_name" content="Buildocrat Land Value Book"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(desc)}"><meta property="og:url" content="{canon}"><meta property="og:image" content="{SITE}og.png">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{e(title)}"><meta name="twitter:description" content="{e(desc)}"><meta name="twitter:image" content="{SITE}og.png">
 <link rel="alternate" type="text/plain" title="LLM summary" href="/llms.txt">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1D2675"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Land Values"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script><style>{CSS}</style>{XPIXEL}</head><body><div class="w">
 <header><a href="/"><b>Buildocrat Land Value Book</b></a><nav>{' › '.join(f'<a href="/{u}">{e(n)}</a>' for n, u in crumbs[:-1])}</nav><button class="inst" type="button" data-install hidden>Install app</button></header>

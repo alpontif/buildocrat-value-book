@@ -80,10 +80,6 @@ twq('config','rhmpt');
 twq('event','tw-rhmpt-14r33g');
 </script>
 """
-FONT_OLD = 'family=Poppins:wght@400;500;600;700;800&display=swap'
-FONT_NEW = 'family=Poppins:wght@400;600;800&display=swap'
-
-
 def gz_bytes(obj):
     raw = json.dumps(obj, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
     return gzip.compress(raw, 9, mtime=0)
@@ -308,126 +304,6 @@ def conf_cell(c):
     return '<span class="pill c-%s">%s</span>' % (cls, name)
 
 
-def _decode_ring(enc):
-    out = []
-    x = y = 0
-    for p in enc.split(' '):
-        k = p.index(',')
-        x += int(p[:k]); y += int(p[k + 1:])
-        out.append((x / 1000.0, y / 1000.0))
-    return out
-
-
-def _dp(pts, eps):
-    """Douglas-Peucker. The simplified ring is only for the first-paint map."""
-    if len(pts) < 3:
-        return pts
-
-    def dist(p, a, b):
-        (x, y), (x1, y1), (x2, y2) = p, a, b
-        dx, dy = x2 - x1, y2 - y1
-        if dx == 0 and dy == 0:
-            return math.hypot(x - x1, y - y1)
-        t = max(0.0, min(1.0, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy)))
-        return math.hypot(x - (x1 + t * dx), y - (y1 + t * dy))
-
-    def rec(a, b):
-        if b <= a + 1:
-            return []
-        md, idx = -1.0, a
-        for i in range(a + 1, b):
-            d = dist(pts[i], pts[a], pts[b])
-            if d > md:
-                md, idx = d, i
-        if md > eps:
-            return rec(a, idx) + [pts[idx]] + rec(idx, b)
-        return []
-
-    return [pts[0]] + rec(0, len(pts) - 1) + [pts[-1]]
-
-
-def _band(v):
-    breaks = (3000, 8000, 20000, 50000, 120000, 300000)
-    i = 0
-    while i < len(breaks) and v >= breaks[i]:
-        i += 1
-    return i
-
-
-def map_svg(summary, data_dir=DATA):
-    """Choropleth of all 774 LGAs plus city markers, small enough to inline.
-
-    Coordinates are the same projection the canvas uses. Colours use the same
-    residential breaks as the live map. This is a drawing of the published
-    values, not a second set of values.
-    """
-    man = json.load(open(os.path.join(data_dir, 'manifest.json')))
-    cx = math.cos(math.radians(9))
-    lgas = summary['lgas']
-    rings = {}
-    borders = []
-    for url in man['geo'].values():
-        geo = gunzip_json(os.path.join(os.path.dirname(data_dir), url))
-        for row in geo['r']:
-            simp = []
-            for enc in row['r']:
-                raw = _decode_ring(enc)
-                if len(raw) < 4:
-                    continue
-                pts = _dp(raw, 0.045)
-                if len(pts) < 4:
-                    pts = raw
-                simp.append(pts)
-            rings[row['i']] = simp
-        for b in geo.get('b') or []:
-            borders.append(b)
-    if len(rings) != len(lgas):
-        raise SystemExit('map is missing LGA outlines')
-
-    def xy(lng, lat):
-        return lng * cx, -lat
-
-    def d_of(parts):
-        cmd = []
-        for ring in parts:
-            x, y = xy(*ring[0])
-            cmd.append('M%.2f %.2f' % (x, y))
-            for lng, lat in ring[1:]:
-                x, y = xy(lng, lat)
-                cmd.append('L%.2f %.2f' % (x, y))
-            cmd.append('Z')
-        return ''.join(cmd)
-
-    bits = []
-    for i in range(len(lgas)):
-        d = d_of(rings.get(i) or [])
-        if not d:
-            raise SystemExit('LGA %s has no outline' % i)
-        g = lgas[i]
-        bits.append('<path class="s%d" data-lga="%d" d="%s"><title>%s, %s</title></path>'
-                    % (_band(g['v'].get('res') or 0), i, d, esc(g['n']), esc(g['s'])))
-    for b in borders:
-        parts = []
-        for enc in b['r']:
-            pts = _dp(_decode_ring(enc), 0.08)
-            if len(pts) >= 4:
-                parts.append(pts)
-        d = d_of(parts)
-        if d:
-            bits.append('<path class="stb" data-st="%s" d="%s"/>' % (b['c'], d))
-    for c in summary.get('cities') or []:
-        x, y = xy(c['lo'] / 1e4, c['la'] / 1e4)
-        st = lgas[c['g']]['s']
-        bits.append('<circle class="cityhit" data-place="%d" data-st="%s" cx="%.2f" cy="%.2f" r="0.34"><title>%s</title></circle>'
-                    '<circle class="city" cx="%.2f" cy="%.2f" r="0.08"/>'
-                    % (c['i'], st, x, y, esc(c['n']), x, y))
-    body = ''.join(bits)
-    # Nigeria in the canvas projection, with a little padding
-    svg = ('<svg id="mapsvg" data-vb="2.55 -14.05 12.15 10.05" viewBox="2.55 -14.05 12.15 10.05" '
-           'role="img" aria-label="Map of Nigeria shaded by residential land value. City markers are the 73 cities.">'
-           '%s</svg>' % body)
-    return svg
-
 
 def prerender(docs=DOCS):
     """Write headline numbers and the first view of each table into index.html."""
@@ -547,9 +423,9 @@ def prerender(docs=DOCS):
         % (s['c'], esc(SC[s['c']]), esc(s['cap']), short(s['v'].get('res'))) for s in st_rows)
     panel = (
         '<div class="ptitle"><div><h3>Nigeria</h3><div class="tags"><span class="tag">37 states</span><span class="tag">774 LGAs</span><span class="tag">%s places</span></div></div></div>'
+        '<p class="note">Click a state, an LGA, a dot or any house on the map, or enter coordinates above. Switch between land, building and rental values with the tabs. Each result gives the NIPOST postcode for the exact spot.</p>'
         '<div><p class="eyebrow" style="margin-bottom:4px">Highest LGAs, residential</p><table class="mini">%s</table></div>'
         '<div><p class="eyebrow" style="margin-bottom:4px">States, capital city</p><table class="mini">%s</table></div>'
-        '<p class="note">Click a state, an LGA, a dot or any house on the map, or enter coordinates above. Switch between land, building and rental values with the tabs. Each result gives the NIPOST postcode for the exact spot.</p>'
     ) % (commas(meta['nPlaces']), top_html, st_html)
     h2, n = re.subn(r'(<aside class="panel" id="panel" aria-live="polite">).*?(</aside>)',
                     lambda m: m.group(1) + panel + m.group(2), h, count=1, flags=re.S)
@@ -562,13 +438,9 @@ def prerender(docs=DOCS):
         h = re.sub(r'<script type="application/json" id="lb-manifest">.*?</script>', tag, h, count=1, flags=re.S)
     else:
         h = h.replace('<script src="pwa.js" defer></script>', tag + '\n<script src="pwa.js" defer></script>', 1)
-    svg = map_svg(summary, data)
+    # The interactive map is the original Mapbox map. Do not inject an SVG over it.
     if 'id="mapsvg"' in h:
-        h, nsvg = re.subn(r'<svg id="mapsvg"[\s\S]*?</svg>', svg, h, count=1)
-    else:
-        h, nsvg = re.subn(r'<div class="mapph" id="mapph">[\s\S]*?</div>', svg, h, count=1)
-    if nsvg != 1:
-        raise SystemExit('map marker missing')
+        h = re.sub(r'<svg id="mapsvg"[\s\S]*?</svg>\s*', '', h, count=1)
     preload = '<link rel="preload" id="lb-summary-preload" as="fetch" href="%s" fetchpriority="high" crossorigin>' % man['summary']
     if 'id="lb-summary-preload"' in h:
         h = re.sub(r'<link rel="preload" id="lb-summary-preload"[^>]*>', preload, h, count=1)
@@ -579,7 +451,7 @@ def prerender(docs=DOCS):
         else:
             h = h.replace('</head>', preload + '\n</head>', 1)
     open(idx_path, 'w', encoding='utf-8').write(h)
-    print('prerendered index.html', when, 'summary', os.path.getsize(os.path.join(docs, man['summary'])), 'map svg', len(svg))
+    print('prerendered index.html', when, 'summary', os.path.getsize(os.path.join(docs, man['summary'])))
 
 
 def pa_name(pl, j):
@@ -610,8 +482,8 @@ def replace_pager(h, id_, page, pages, label):
 
 
 def patch_shells(docs=DOCS):
-    """Defer gtag and the X pixel, and cut Poppins to three weights, on every built page."""
-    n_tags = n_font = 0
+    """Defer gtag and the X pixel on every built page. Font weights stay as designed."""
+    n_tags = 0
     for root, dirs, files in os.walk(docs):
         dirs[:] = [d for d in dirs if d not in ('.git',)]
         for fn in files:
@@ -625,12 +497,9 @@ def patch_shells(docs=DOCS):
                 n_tags += 1
             if OLD_X in text:
                 text = text.replace(OLD_X, '', 1)
-            if FONT_OLD in text:
-                text = text.replace(FONT_OLD, FONT_NEW)
-                n_font += 1
             if text != orig:
                 open(path, 'w', encoding='utf-8').write(text)
-    print('patched tags on', n_tags, 'pages; font on', n_font)
+    print('patched tags on', n_tags, 'pages')
 
 
 if __name__ == '__main__':
