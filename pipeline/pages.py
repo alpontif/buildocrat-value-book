@@ -93,6 +93,17 @@ document.addEventListener('click', function (e) {
 </script>
 """
 
+# X base pixel (site rhmpt) plus the Page View event (tag 14r33g).
+XPIXEL = """<!-- X pixel rhmpt -->
+<script>
+!function(e,t,n,s,u,a){e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);
+},s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='https://static.ads-twitter.com/uwt.js',
+a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');
+twq('config','rhmpt');
+twq('event','tw-rhmpt-14r33g');
+</script>
+"""
+
 def page(path, title, desc, body, crumbs, extra_ld=(), wa_text=None):
     canon = SITE + path
     graph = [{"@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": i + 1, "name": n, "item": SITE + u} for i, (n, u) in enumerate(crumbs)]},
@@ -107,7 +118,7 @@ def page(path, title, desc, body, crumbs, extra_ld=(), wa_text=None):
 <link rel="alternate" type="text/plain" title="LLM summary" href="/llms.txt">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1D2675"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Land Values"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-<script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script><style>{CSS}</style></head><body><div class="w">
+<script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script><style>{CSS}</style>{XPIXEL}</head><body><div class="w">
 <header><a href="/"><b>Buildocrat Land Value Book</b></a><nav>{' › '.join(f'<a href="/{u}">{e(n)}</a>' for n, u in crumbs[:-1])}</nav><button class="inst" type="button" data-install hidden>Install app</button></header>
 <main>{body}</main>
 <footer><p>Indicative asking-price values from listings read in the week of {DLONG}, updated every week. Not a valuation report; for lending, sale or court use, commission an ESVARBON-registered valuer.
@@ -361,7 +372,7 @@ ver = ''.join(f'<meta name="{n}" content="{e(CFG[k])}">' for k, n in (('google_s
 head = (f'<!--SEO:HEAD-->{GA}<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">{ver}'
         f'<meta property="og:image" content="{SITE}og.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="{SITE}og.png">'
         f'<link rel="alternate" type="text/plain" title="LLM summary" href="/llms.txt">'
-        f'<script type="application/ld+json">{json.dumps({"@context": "https://schema.org", "@graph": [WEBSITE, ORG, DATASET, APP, faq_ld(GQ[:6])]}, ensure_ascii=False)}</script><!--/SEO:HEAD-->')
+        f'<script type="application/ld+json">{json.dumps({"@context": "https://schema.org", "@graph": [WEBSITE, ORG, DATASET, APP, faq_ld(GQ[:6])]}, ensure_ascii=False)}</script>{XPIXEL}<!--/SEO:HEAD-->')
 st_tbl = ''.join(f'<tr><td><a href="/{STSLUG[s["c"]]}/">{e(SC[s["c"]])}</a></td><td>{e(s["cap"])}</td><td class="r">{naira(s["v"]["res"])}</td><td class="r">{naira(s["v"]["res"] * 600)}</td><td class="r">{naira(s["v"].get("rent3"))}</td></tr>' for s in sorted(D['states'], key=lambda s: SC[s['c']]))
 facts = (f'<!--SEO:BODY--><section id="facts"><div class="sec-head"><div><p class="eyebrow">At a glance, {e(MON)}</p><h2>Land prices in Nigeria by state</h2>'
          f'<p>Residential land in each state capital per m², a typical 600 m² plot and a year\'s rent for a 3-bedroom flat. Every state, all 774 LGAs and {len(place_rows):,} towns, districts and gated estates have their own page: '
