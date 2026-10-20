@@ -40,7 +40,7 @@ print('cache-busted index.html')
 
 # installed app: a new service-worker version each edition, so phones pick up the new week's shell and data
 swp = os.path.join(docs, 'sw.js'); sw = open(swp, encoding='utf-8').read()
-hv = hashlib.md5(b''.join(open(os.path.join(docs, f), 'rb').read() for f in ('index.html', 'app.js', 'config.js', 'pwa.js', 'sw.js', 'data/lgas.json'))).hexdigest()[:10]
+hv = hashlib.md5(b''.join(open(os.path.join(docs, f), 'rb').read() for f in ('index.html', 'app.js', 'config.js', 'pwa.js', 'sw.js', 'data/manifest.json'))).hexdigest()[:10]
 open(swp, 'w', encoding='utf-8').write(re.sub(r"const VERSION = '[^']*';", "const VERSION = '%s';" % hv, sw))
 print('service worker version', hv)
 

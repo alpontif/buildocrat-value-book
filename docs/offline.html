@@ -1,11 +1,23 @@
-<!doctype html><html lang="en-NG"><head><!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-BLGWN0LVSG"></script>
+<!doctype html><html lang="en-NG"><head><!-- Google tag (gtag.js) and X pixel rhmpt, after load -->
 <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+function lbLoadTags(){
+  if (window.__lbTags) return; window.__lbTags = 1;
+  var g = document.createElement('script');
+  g.async = true;
+  g.src = 'https://www.googletagmanager.com/gtag/js?id=G-BLGWN0LVSG';
+  document.head.appendChild(g);
   gtag('js', new Date());
-
   gtag('config', 'G-BLGWN0LVSG');
+  !function(e,t,n,s,u,a){e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);
+  },s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='https://static.ads-twitter.com/uwt.js',
+  a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');
+  twq('config','rhmpt');
+  twq('event','tw-rhmpt-14r33g');
+}
+if (document.readyState === 'complete') setTimeout(lbLoadTags, 1);
+else window.addEventListener('load', function () { setTimeout(lbLoadTags, 1); });
 </script>
 <script>
 document.addEventListener('click', function (e) {
@@ -23,15 +35,7 @@ document.addEventListener('click', function (e) {
 .c{background:#fff;border-radius:22px;max-width:440px;padding:30px 28px;box-shadow:0 10px 30px rgba(29,38,117,.12)}
 img{width:56px;height:56px;border-radius:14px}h1{color:#1D2675;font-size:1.5rem;margin:14px 0 6px;line-height:1.2}
 a{display:inline-block;margin-top:14px;background:#1D2675;color:#fff;text-decoration:none;font-weight:600;padding:10px 20px;border-radius:999px}
-@media (prefers-color-scheme:dark){body{background:#0F1234;color:#E7E9FA}.c{background:#171B47}h1{color:#C9CEFF}a{background:#C9CEFF;color:#0F1234}}</style><!-- X pixel rhmpt -->
-<script>
-!function(e,t,n,s,u,a){e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);
-},s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='https://static.ads-twitter.com/uwt.js',
-a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');
-twq('config','rhmpt');
-twq('event','tw-rhmpt-14r33g');
-</script>
-</head>
+@media (prefers-color-scheme:dark){body{background:#0F1234;color:#E7E9FA}.c{background:#171B47}h1{color:#C9CEFF}a{background:#C9CEFF;color:#0F1234}}</style></head>
 <body><div class="c"><img src="/icons/icon-192.png" alt=""><h1>You’re offline</h1>
 <p>This page hasn’t been saved on this device yet. The value map, every state, LGA, town and estate, and the estimator still work offline with the values from your last visit.</p>
 <a href="/">Open the value map</a></div></body></html>

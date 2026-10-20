@@ -31,23 +31,129 @@ const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u03
 const $=id=>document.getElementById(id);
 
 /* ---------- data ---------- */
-let ST=[], LG=[], PL=null, EV=[], META={}, BORDERS=[];
+let ST=[], LG=[], PL=null, EV=[], META={}, BORDERS=[], CITIES=[];
 const STI={};
-async function load(){
-  const gz=async u=>{ const txt=(await (await fetch(u)).text()).trim(); const bin=atob(txt); const buf=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) buf[i]=bin.charCodeAt(i);
-    if(buf[0]===0x1f&&buf[1]===0x8b){ const ds=new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip')); return JSON.parse(await new Response(ds).text()); }
-    return JSON.parse(new TextDecoder().decode(buf)); };
-  const [a,b,c]=await Promise.all([fetch('data/lgas.json').then(r=>r.json()), gz('data/places.b64.txt'), fetch('data/evidence.json').then(r=>r.json())]);
-  ST=a.states; LG=a.lgas; META=a.meta; BORDERS=a.borders; PL=b; EV=c; FX=META.fx||FX; BUILD=META.build||BUILD;
-  for(let j=1;j<PL.la.length;j++){ PL.la[j]+=PL.la[j-1]; PL.lo[j]+=PL.lo[j-1]; }
-  ST.forEach((s,i)=>STI[s.c]=i);
-  // hierarchy: parent pointers (City > District/Area > Neighbourhood > Gated estate)
-  PL.pa=new Int32Array(PL.n.length).fill(-1); PL.ch=new Map();
-  if(PL.pk){ let k=0; PL.pk.forEach((d,i)=>{ k+=d; const p=PL.pp[i]; PL.pa[k]=p; let a=PL.ch.get(p); if(!a){a=[];PL.ch.set(p,a);} a.push(k); }); }
-  if(!PL.z) PL.z=new Array(PL.n.length).fill(5);
-  for(const g of LG) derive(g.v,g.s);
-  for(const s of ST) derive(s.v,s.c);
-  for(const g of LG){ const zs=g.zs||[]; let best=null; for(const r of zs){ if(!best||Math.abs(Math.log(r[2]/g.v.res))<Math.abs(Math.log(best[2]/g.v.res))) best=r; } g.v.zone=best?best[0]:null; }
+let MAN=null, placesReady=false, PIDX=null;
+const loadedStates=new Set();
+const stateP=new Map();
+let wardsP=null, geoP=null, evP=null, allPlacesP=null;
+function manifest(){
+  if(MAN) return MAN;
+  const el=document.getElementById('lb-manifest');
+  if(el && el.textContent && el.textContent.trim()!=='{}') MAN=JSON.parse(el.textContent);
+  return MAN;
+}
+async function gunzipJson(url){
+  const res=await fetch(url); if(!res.ok) throw new Error(url+' '+res.status);
+  const buf=new Uint8Array(await res.arrayBuffer());
+  let text;
+  if(buf.length>=2 && buf[0]===0x1f && buf[1]===0x8b){
+    const ds=new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+    text=await new Response(ds).text();
+  } else text=new TextDecoder().decode(buf);
+  return JSON.parse(text);
+}
+function allocPL(){
+  if(PL) return;
+  const n=META.nPlaces;
+  PL={n:Array(n), t:Array(n), la:Array(n), lo:Array(n), g:Array(n), v:Array(n), c:Array(n), w:Array(n), z:Array(n), W:[], pa:new Int32Array(n).fill(-1), ch:new Map(), have:new Uint8Array(n), full:new Uint8Array(n)};
+  PIDX=new Map();
+}
+function indexPlace(id, lo, la){
+  const key=(Math.floor(lo/2000))+':'+(Math.floor(la/2000));
+  let a=PIDX.get(key); if(!a){a=[];PIDX.set(key,a);} if(!a.includes(id)) a.push(id);
+}
+function seedCities(){
+  allocPL();
+  for(const c of CITIES){
+    const id=c.i;
+    PL.n[id]=c.n; PL.t[id]=c.t; PL.la[id]=c.la; PL.lo[id]=c.lo; PL.g[id]=c.g; PL.v[id]=c.v; PL.c[id]=c.c; PL.z[id]=c.z; PL.w[id]=c.w||0;
+    if(!PL.have[id]){ PL.have[id]=1; indexPlace(id, c.lo, c.la); }
+  }
+}
+function ingestPlaces(chunk){
+  allocPL();
+  let id=0, la=0, lo=0;
+  for(let k=0;k<chunk.n.length;k++){
+    id = k ? id+chunk.id[k] : chunk.id[0];
+    la += chunk.la[k]; lo += chunk.lo[k];
+    const known=PL.have[id];
+    PL.n[id]=chunk.n[k]; PL.t[id]=chunk.t[k]; PL.la[id]=la; PL.lo[id]=lo;
+    PL.g[id]=chunk.g[k]; PL.v[id]=chunk.v[k]; PL.c[id]=chunk.c[k]; PL.w[id]=chunk.w[k]; PL.z[id]=chunk.z[k];
+    const p=chunk.pa[k];
+    if(p>=0){ PL.pa[id]=p; let a=PL.ch.get(p); if(!a){a=[];PL.ch.set(p,a);} if(!a.includes(id)) a.push(id); }
+    PL.have[id]=1; PL.full[id]=1;
+    if(!known) indexPlace(id, lo, la);
+  }
+}
+function ensureWards(){
+  if(PL && PL.W && PL.W.length) return Promise.resolve();
+  if(!wardsP) wardsP=gunzipJson(manifest().wards).then(w=>{ allocPL(); PL.W=w; });
+  return wardsP;
+}
+function ensureStatePlaces(st){
+  if(loadedStates.has(st)) return Promise.resolve();
+  if(stateP.has(st)) return stateP.get(st);
+  const p=(async()=>{
+    await loadSummary();
+    const url=manifest().places[st];
+    await ensureWards();
+    ingestPlaces(await gunzipJson(url));
+    loadedStates.add(st);
+    if(loadedStates.size===Object.keys(manifest().places).length){ placesReady=true; buildSearch(); dispatchEvent(new Event('lvb:places')); }
+  })();
+  stateP.set(st, p);
+  return p;
+}
+function ensurePlaces(){
+  if(placesReady) return Promise.resolve();
+  if(!allPlacesP) allPlacesP=Promise.all(Object.keys(manifest().places).map(ensureStatePlaces)).then(()=>{});
+  return allPlacesP;
+}
+function ensureGeo(){
+  if(geoP) return geoP;
+  geoP=(async()=>{
+    const parts=await Promise.all(Object.values(manifest().geo).map(gunzipJson));
+    BORDERS=[];
+    for(const p of parts){ for(const g of p.r) LG[g.i].r=g.r; for(const b of p.b||[]) BORDERS.push(b); }
+    LGR=null;
+    buildPaths();
+    dispatchEvent(new Event('lvb:geo'));
+  })();
+  return geoP;
+}
+function ensureEvidence(){
+  if(EV.length) return Promise.resolve();
+  if(!evP) evP=gunzipJson(manifest().evidence).then(e=>{ EV=e; });
+  return evP;
+}
+function statesInBox(lat0,lng0,lat1,lng1){
+  const out=[];
+  for(const s of ST){ const b=s.bb; if(!b||b[2]<lng0||b[0]>lng1||b[3]<lat0||b[1]>lat1) continue; out.push(s.c); }
+  return out;
+}
+function statesNear(lat,lng,km){
+  const dlat=km/110.57, dlng=km/(111.32*Math.max(0.2, Math.cos(lat*Math.PI/180)));
+  return statesInBox(lat-dlat, lng-dlng, lat+dlat, lng+dlng);
+}
+async function ensureNear(lat,lng){
+  await Promise.all(statesNear(lat,lng,12).map(ensureStatePlaces));
+}
+let summaryP=null;
+function loadSummary(){
+  if(summaryP) return summaryP;
+  summaryP=(async()=>{
+    if(!manifest()) MAN=await fetch('data/manifest.json').then(r=>{ if(!r.ok) throw new Error('manifest'); return r.json(); });
+    const a=await gunzipJson(MAN.summary);
+    ST=a.states; LG=a.lgas; META=a.meta; CITIES=a.cities||[]; FX=META.fx||FX; BUILD=META.build||BUILD;
+    ST.forEach((s,i)=>STI[s.c]=i);
+    for(const g of LG) derive(g.v,g.s);
+    for(const s of ST) derive(s.v,s.c);
+    for(const g of LG){ const zs=g.zs||[]; let best=null; for(const r of zs){ if(!best||Math.abs(Math.log(r[2]/g.v.res))<Math.abs(Math.log(best[2]/g.v.res))) best=r; } g.v.zone=best?best[0]:null; }
+    seedCities();
+  })();
+  summaryP.catch(()=>{ summaryP=null; });
+  return summaryP;
 }
 function derive(v,st){ // building and rental measures derived from the modelled values
   v.bpm=v.sale4?v.sale4/GFA4:null; v.bcost=BUILD*(STF[st]??0.93); v.yld=(v.rent3&&v.sale3)?100*v.rent3/v.sale3:null;
@@ -72,16 +178,13 @@ function placeVals(j){
 const CX=Math.cos(9*Math.PI/180);
 const W2=(lng,lat)=>[lng*CX,-lat];
 const canvas=$('map'), ctx=canvas.getContext('2d');
-let dpr=1, view={s:1,tx:0,ty:0}, layer='res', breaks={}, lgaPaths=[], statePaths=[], hoverL=-1, selL=-1, selState=null, selPt=null, PIDX=null;
+let dpr=1, view={s:1,tx:0,ty:0}, layer='res', breaks={}, lgaPaths=[], statePaths=[], hoverL=-1, selL=-1, selState=null, selPt=null;
 function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 let COL={};
 function readColors(){ COL={sea:css('--sea'),land:css('--land'),edge:css('--edge'),sedge:css('--sedge'),sel:css('--sel'),nd:css('--nd'),ink:css('--ink'),muted:css('--muted'),pin:css('--pin'),surface:css('--surface'),accent:css('--accent'),s:[0,1,2,3,4,5,6].map(i=>css('--s'+i))}; }
 function buildPaths(){
-  lgaPaths=LG.map(g=>{ const p=new Path2D(); for(const enc of g.r){ const pts=decode(enc); pts.forEach(([lng,lat],i)=>{const [X,Y]=W2(lng,lat); i?p.lineTo(X,Y):p.moveTo(X,Y);}); p.closePath(); } return p; });
+  lgaPaths=LG.map(g=>{ const p=new Path2D(); for(const enc of (g.r||[])){ const pts=decode(enc); pts.forEach(([lng,lat],i)=>{const [X,Y]=W2(lng,lat); i?p.lineTo(X,Y):p.moveTo(X,Y);}); p.closePath(); } return p; });
   statePaths=BORDERS.map(b=>{ const p=new Path2D(); for(const enc of b.r){ const pts=decode(enc); pts.forEach(([lng,lat],i)=>{const [X,Y]=W2(lng,lat); i?p.lineTo(X,Y):p.moveTo(X,Y);}); p.closePath(); } return {c:b.c,p}; });
-  // grid index for places
-  PIDX=new Map(); const n=PL.n.length;
-  for(let j=0;j<n;j++){ const k=(Math.floor(PL.lo[j]/2000))+':'+(Math.floor(PL.la[j]/2000)); let a=PIDX.get(k); if(!a){a=[];PIDX.set(k,a);} a.push(j); }
 }
 function computeBreaks(){
   for(const [k] of LAYERS){ const vals=LG.map(g=>g.v[k]).filter(v=>v>0).sort((a,b)=>a-b); const q=[0.2,0.42,0.62,0.78,0.9,0.97].map(f=>vals[Math.floor(vals.length*f)]); breaks[k]=q.map(v=>sig(v,2)).filter((v,i,a)=>!i||v>a[i-1]); }
@@ -92,7 +195,7 @@ const colOf=(k,c)=>c<0?COL.nd:(k==='zone'?ZONEC[c]:COL.s[Math.min(6,c)]);
 function pval(j,k){ return k==='res'?PL.v[j]:k==='zone'?PL.z[j]:placeVals(j)[k]; }
 function resize(){ const r=canvas.getBoundingClientRect(); dpr=window.devicePixelRatio||1; canvas.width=Math.round(r.width*dpr); canvas.height=Math.round(r.height*dpr); draw(); }
 function fitBox(x0,y0,x1,y1,pad=0.06){ const r=canvas.getBoundingClientRect(); const w=(x1-x0)*(1+2*pad), h=(y1-y0)*(1+2*pad); const s=Math.min(r.width/w, r.height/h); view.s=s; view.tx=r.width/2-s*(x0+x1)/2; view.ty=r.height/2-s*(y0+y1)/2; draw(); }
-function fitLL(lat0,lng0,lat1,lng1){ const a=W2(lng0,lat0), b=W2(lng1,lat1); fitBox(Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[0],b[0]),Math.max(a[1],b[1])); }
+function fitLL(lat0,lng0,lat1,lng1){ const a=W2(lng0,lat0), b=W2(lng1,lat1); fitBox(Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[0],b[0]),Math.max(a[1],b[1])); syncViewPlaces(); }
 const fitAll=()=>fitLL(4.2,2.65,13.9,14.7);
 function toWorld(px,py){ return [(px-view.tx)/view.s,(py-view.ty)/view.s]; }
 function toLL(px,py){ const [X,Y]=toWorld(px,py); return [-Y, X/CX]; }
@@ -115,6 +218,7 @@ function render(){
   if(selPt){ const [x,y]=toScreen(selPt[0],selPt[1]); ctx.fillStyle=COL.pin; ctx.strokeStyle=COL.surface; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(x,y,7,0,Math.PI*2); ctx.fill(); ctx.stroke(); }
 }
 function visiblePlaces(minType){
+  if(!PIDX||!PL) return [];
   const r=canvas.getBoundingClientRect(); const [la1,lo0]=toLL(0,0), [la0,lo1]=toLL(r.width,r.height);
   const out=[]; const gx0=Math.floor(lo0*10000/2000), gx1=Math.floor(lo1*10000/2000), gy0=Math.floor(la0*10000/2000), gy1=Math.floor(la1*10000/2000);
   if((gx1-gx0)*(gy1-gy0)>6000) return null;
@@ -123,10 +227,11 @@ function visiblePlaces(minType){
 }
 let labelsDrawn=[];
 function drawPlaces(){
+  if(!PL||!PIDX) return;
   const s=view.s; labelsDrawn=[];
   let maxT = s<120?1: s<300?2: s<700?4: s<1500?5: 7;
   let list;
-  if(s<90){ list=[]; for(let j=0;j<PL.t.length;j++) if(PL.t[j]===0) list.push(j); }
+  if(s<90) list=CITIES.map(c=>c.i);
   else list=visiblePlaces(maxT)||[];
   const r=canvas.getBoundingClientRect();
   const occ=new Set(); const cell=8; let nlab=0;
@@ -154,6 +259,7 @@ function lgaAt(px,py){
 }
 function placeAt(px,py){ let best=-1,bd=81; for(const [j,x,y] of labelsDrawn){ const d=(x-px)**2+(y-py)**2; if(d<bd){bd=d;best=j;} } return best; }
 function nearestPlaces(lat,lng,k=6,maxKm=8){
+  if(!PIDX||!PL) return [];
   const out=[]; const gx=Math.floor(lng*10000/2000), gy=Math.floor(lat*10000/2000);
   for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++){ const a=PIDX.get((gx+dx)+':'+(gy+dy)); if(a) for(const j of a){ const d=km(lat,lng,PL.la[j]/1e4,PL.lo[j]/1e4); if(d<=maxKm) out.push([j,d]); } }
   out.sort((a,b)=>a[1]-b[1]); return out.slice(0,k);
@@ -187,15 +293,15 @@ canvas.addEventListener('pointercancel',endPtr);
 canvas.addEventListener('pointerleave',()=>{ tip.hidden=true; if(hoverL>=0){hoverL=-1; draw();} });
 canvas.addEventListener('wheel',e=>{ e.preventDefault(); const r=canvas.getBoundingClientRect(); zoomAt(e.deltaY<0?1.25:0.8,e.clientX-r.left,e.clientY-r.top); },{passive:false});
 canvas.addEventListener('dblclick',e=>{ const r=canvas.getBoundingClientRect(); zoomAt(2,e.clientX-r.left,e.clientY-r.top); });
-function zoomAt(f,px,py){ const ns=Math.max(25,Math.min(9000,view.s*f)); f=ns/view.s; view.tx=px-(px-view.tx)*f; view.ty=py-(py-view.ty)*f; view.s=ns; draw(); }
-$('zin').onclick=()=>MAPI.zoom(1.6);
-$('zout').onclick=()=>MAPI.zoom(1/1.6);
-$('zall').onclick=()=>MAPI.fitAll();
+function zoomAt(f,px,py){ const ns=Math.max(25,Math.min(9000,view.s*f)); f=ns/view.s; view.tx=px-(px-view.tx)*f; view.ty=py-(py-view.ty)*f; view.s=ns; draw(); syncViewPlaces(); }
+$('zin').onclick=()=>ensureMap().then(()=>MAPI.zoom(1.6));
+$('zout').onclick=()=>ensureMap().then(()=>MAPI.zoom(1/1.6));
+$('zall').onclick=()=>ensureMap().then(()=>MAPI.fitAll());
 /* canvas map behind the common map interface (used when no Mapbox token is configured) */
 function lgaBox(i){ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; for(const enc of LG[i].r) for(const [lng,lat] of decode(enc)){ x0=Math.min(x0,lng);x1=Math.max(x1,lng);y0=Math.min(y0,lat);y1=Math.max(y1,lat);} return [y0,x0,y1,x1]; }
 const CANVAS_MAP={ kind:'canvas', refresh:()=>draw(), fitAll:()=>fitAll(), fitLL:(a,b,c,d)=>fitLL(a,b,c,d),
   fitLGA(i){ const [a,b,c,d]=lgaBox(i); const p=0.15*Math.max(c-a,d-b); fitLL(a-p,b-p,c+p,d+p); },
-  flyPlace(la,lo,t){ const [X,Y]=W2(lo,la); const r=canvas.getBoundingClientRect(); view.s=Math.max(view.s, t<=1?420:900); view.tx=r.width/2-X*view.s; view.ty=r.height/2-Y*view.s; draw(); },
+  flyPlace(la,lo,t){ const [X,Y]=W2(lo,la); const r=canvas.getBoundingClientRect(); view.s=Math.max(view.s, t<=1?420:900); view.tx=r.width/2-X*view.s; view.ty=r.height/2-Y*view.s; draw(); syncViewPlaces(); },
   zoom(f){ const r=canvas.getBoundingClientRect(); zoomAt(f,r.width/2,r.height/2); },
   sat(la,lo){ this.flyPlace(la,lo,7); } };
 let MAPI=CANVAS_MAP;
@@ -255,12 +361,19 @@ const WA_NO='2347018024292';
 function waText(s){ return s?`Hello Buildocrat, I'm interested in ${s.name.replace(/^Pinned spot/,'a spot')} on the Land Value Book: https://value.buildocrat.store/#at=${s.lat.toFixed(5)},${s.lng.toFixed(5)} . `:"Hello Buildocrat, I'm on the Land Value Book (value.buildocrat.store). "; }
 const waHref=s=>`https://wa.me/${WA_NO}?text=${encodeURIComponent(waText(s))}`;
 function setSel(s){ SEL=s; estimate(); const a=$('wa'); if(a) a.href=waHref(s); }
-function selectPlace(j,fly=true){
+async function selectPlace(j,fly=true,st){
   RER=()=>selectPlace(j,false);
+  if(!(PL&&PL.full&&PL.full[j])){
+    if(!st && PL&&PL.have&&PL.have[j]) st=LG[PL.g[j]].s;
+    if(!st){ const btn=document.querySelector('[data-place="'+j+'"]'); st=btn&&btn.dataset.st; }
+    if(st) await ensureStatePlaces(st); else await ensurePlaces();
+  }
+  if(!(PL&&PL.full&&PL.full[j])) return;
+  try{ await ensureEvidence(); }catch(e){}
   const g=LG[PL.g[j]], la=PL.la[j]/1e4, lo=PL.lo[j]/1e4, v=placeVals(j), t=PL.t[j], plot=g.plot||600;
   selL=PL.g[j]; selState=null; selPt=[la,lo];
-  if(fly) MAPI.flyPlace(la,lo,DRANK[t]);
-  MAPI.refresh();
+  if(fly) ensureMap().then(()=>MAPI.flyPlace(la,lo,DRANK[t]));
+  if(lgaPaths.length||MAPI.kind==='mapbox') MAPI.refresh();
   const anc=ancestors(j), kids=(PL.ch.get(j)||[]).slice().sort((a,b)=>PL.t[b]-PL.t[a]||PL.v[b]-PL.v[a]);
   const base=TAB==='land'?`LGA median ${short(g.v.res)}/m\u00b2.`:TAB==='bld'?`LGA typical ${short(g.v.sale4)}.`:`LGA typical ${short(g.v.rent3)} a year.`;
   $('panel').innerHTML=`${crumbs([['Nigeria','ng'],[SC[g.s],'s:'+g.s],[g.n+' LGA','l:'+PL.g[j]]].concat(anc.map(a=>[PL.n[a],'p:'+a])).concat([[PL.n[j],null]]))}
@@ -284,10 +397,13 @@ function spotValues(la,lo,i){ // value at any point: blend of the nearest mapped
   else { v={...g.v}; note='No mapped settlement within 8 km, so this uses the LGA values. Likely rural or undeveloped land.'; v.res=g.v.resR||g.v.res; v.zone=6; }
   return {v:derive(v,g.s),note,conf,nb};
 }
-function selectPoint(la,lo,i){
+async function selectPoint(la,lo,i){
   RER=()=>selectPoint(la,lo,i);
+  await ensureNear(la,lo);
+  try{ await ensureEvidence(); }catch(e){}
   const g=LG[i]; const {v,note,conf,nb}=spotValues(la,lo,i);
-  selL=i; selState=null; selPt=[la,lo]; MAPI.refresh();
+  selL=i; selState=null; selPt=[la,lo];
+  if(lgaPaths.length||MAPI.kind==='mapbox') MAPI.refresh();
   const plot=g.plot||600;
   $('panel').innerHTML=`${crumbs([['Nigeria','ng'],[SC[g.s],'s:'+g.s],[g.n+' LGA','l:'+i]].concat(nb.length&&nb[0][1]<1.5?ancestors(nb[0][0]).concat([nb[0][0]]).map(a=>[PL.n[a],'p:'+a]):[]).concat([['Pinned spot',null]]))}
    <div class="ptitle"><div><h3>Pinned spot</h3><div class="tags"><span class="tag">${g.n} LGA</span><span class="tag">${g.cls}</span></div></div>${confPill(conf)}</div>
@@ -298,12 +414,16 @@ function selectPoint(la,lo,i){
   setSel({kind:'point',name:'Pinned spot in '+g.n+' LGA, '+SC[g.s],lat:la,lng:lo,st:g.s,v,plot,conf});
 }
 const LTYPES=[['','All places'],['0','Cities'],['1','Towns'],['5','Villages'],['3','Areas'],['2','Districts'],['4','Neighbourhoods'],['8','Gated estates'],['9','Gated areas'],['6','Hamlets']];
-function selectLGA(i,fly=true){
+async function selectLGA(i,fly=true){
+  if(!LG[i]) return loadSummary().then(()=>selectLGA(i,fly));
   RER=()=>selectLGA(i,false);
-  const g=LG[i]; selL=i; selState=null; selPt=null;
-  if(fly) MAPI.fitLGA(i); MAPI.refresh();
+  const g=LG[i];
+  await ensureStatePlaces(g.s);
+  selL=i; selState=null; selPt=null;
+  if(fly) ensureMap().then(()=>{ MAPI.fitLGA(i); MAPI.refresh(); });
+  else if(lgaPaths.length||MAPI.kind==='mapbox') MAPI.refresh();
   const hk=TABS[TAB].head;
-  const pl=[]; for(let j=0;j<PL.g.length;j++) if(PL.g[j]===i) pl.push(j);
+  const pl=[]; for(let j=0;j<PL.full.length;j++) if(PL.full[j]&&PL.g[j]===i) pl.push(j);
   const pv=new Map(pl.map(j=>[j,pval(j,hk)||0])); pl.sort((a,b)=>pv.get(b)-pv.get(a));
   const note=TAB==='land'?`Urban areas ${short(g.v.resU)}/m\u00b2, villages and rural land ${short(g.v.resR)}/m\u00b2. Range across the LGA ${short(g.v.lo)} to ${short(g.v.hi)}. ${g.ev?`Backed by ${g.ev} listings in or near the LGA.`:'No listings in the LGA; modelled.'}`:`Typical for ${esc(g.n)} as a whole; pick a place or a house for its own figure.`;
   $('panel').innerHTML=`${crumbs([['Nigeria','ng'],[SC[g.s],'s:'+g.s],[g.n+' LGA',null]])}
@@ -320,9 +440,11 @@ function selectLGA(i,fly=true){
   setSel({kind:'lga',name:g.n+' LGA, '+SC[g.s],lat:g.lat,lng:g.lng,st:g.s,v:g.v,plot:g.plot||600,conf:g.conf});
 }
 function selectState(c,fly=true){
+  if(STI[c]==null) return loadSummary().then(()=>selectState(c,fly));
   RER=()=>selectState(c,false);
   const s=ST[STI[c]]; selState=c; selL=-1; selPt=null;
-  if(fly){ const b=s.bb; MAPI.fitLL(b[1],b[0],b[3],b[2]); } MAPI.refresh();
+  if(fly){ const b=s.bb; ensureMap().then(()=>{ MAPI.fitLL(b[1],b[0],b[3],b[2]); MAPI.refresh(); }); }
+  else if(lgaPaths.length||MAPI.kind==='mapbox') MAPI.refresh();
   const hk=TABS[TAB].head;
   const lg=LG.map((g,i)=>[g,i]).filter(([g])=>g.s===c).sort((a,b)=>(b[0].v[hk]||0)-(a[0].v[hk]||0));
   $('panel').innerHTML=`${crumbs([['Nigeria','ng'],[SC[c],null]])}
@@ -334,10 +456,12 @@ function selectState(c,fly=true){
 }
 function nationalPanel(){
   RER=()=>nationalPanel();
-  selState=null; selL=-1; selPt=null; MAPI.refresh();
+  selState=null; selL=-1; selPt=null;
+  if(lgaPaths.length||MAPI.kind==='mapbox') MAPI.refresh();
   const hk=TABS[TAB].head, hn=TABS[TAB].layers.find(l=>l[0]===hk)[1].toLowerCase();
   const top=[...LG.keys()].sort((a,b)=>(LG[b].v[hk]||0)-(LG[a].v[hk]||0)).slice(0,8);
-  $('panel').innerHTML=`<div class="ptitle"><div><h3>Nigeria</h3><div class="tags"><span class="tag">37 states</span><span class="tag">774 LGAs</span><span class="tag">${PL.n.length.toLocaleString('en-NG')} places</span></div></div></div>
+  const nPl=(META.nPlaces||0).toLocaleString('en-NG');
+  $('panel').innerHTML=`<div class="ptitle"><div><h3>Nigeria</h3><div class="tags"><span class="tag">37 states</span><span class="tag">774 LGAs</span><span class="tag">${nPl} places</span></div></div></div>
    <p class="note">Click a state, an LGA, a dot or any house on the map, or enter coordinates above. Switch between land, building and rental values with the tabs. Each result gives the NIPOST postcode for the exact spot.</p>
    <div><p class="eyebrow" style="margin-bottom:4px">Highest LGAs, ${hn}</p><table class="mini">${top.map(i=>`<tr><td><button type="button" data-lga="${i}">${esc(LG[i].n)}</button> <span class="muted small">${LG[i].s}</span></td><td class="r">${fmtL(hk,LG[i].v[hk])}</td></tr>`).join('')}</table></div>
    <div><p class="eyebrow" style="margin-bottom:4px">States, capital city</p><table class="mini">${[...ST].sort((a,b)=>(b.v[hk]||0)-(a.v[hk]||0)).map(s=>`<tr><td><button type="button" data-go="s:${s.c}">${esc(SC[s.c])}</button> <span class="muted small">${esc(s.cap)}</span></td><td class="r">${fmtL(hk,s.v[hk])}</td></tr>`).join('')}</table></div>`;
@@ -347,9 +471,9 @@ $('panel').addEventListener('click',e=>{
   if(b.dataset.sat){ const [a,c]=b.dataset.sat.split(',').map(Number); MAPI.sat(a,c); return; }
   if(b.dataset.pcgo){ const el=b.closest('.pc'); el.dataset.go='1'; postcodeFill(); return; }
   if(b.dataset.copy){ const t=b.dataset.copy; const done=()=>{b.textContent='Copied';}; try{ navigator.clipboard.writeText(t).then(done,()=>{}); }catch(err){} return; }
-  if(b.dataset.place) return selectPlace(+b.dataset.place);
+  if(b.dataset.place) return selectPlace(+b.dataset.place, true, b.dataset.st);
   if(b.dataset.lga) return selectLGA(+b.dataset.lga);
-  const g=b.dataset.go; if(g==='ng'){ MAPI.fitAll(); nationalPanel(); } else if(g.startsWith('s:')) selectState(g.slice(2)); else if(g.startsWith('l:')) selectLGA(+g.slice(2)); else if(g.startsWith('p:')) selectPlace(+g.slice(2));
+  const g=b.dataset.go; if(g==='ng'){ ensureMap().then(()=>MAPI.fitAll()); nationalPanel(); } else if(g.startsWith('s:')) selectState(g.slice(2)); else if(g.startsWith('l:')) selectLGA(+g.slice(2)); else if(g.startsWith('p:')) selectPlace(+g.slice(2));
 });
 
 /* ---------- enter a pin: coordinates, map links, DMS ---------- */
@@ -367,9 +491,10 @@ function parseSpot(q){
   if((m=q.match(/^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,;\s]\s*(-?\d{1,2}(?:\.\d+)?)\s*$/))) return ok(+m[1],+m[2]);
   return null;
 }
-function goSpot(){ const p=parseSpot($('pinq').value); const msg=$('pinmsg');
+async function goSpot(){ const p=parseSpot($('pinq').value); const msg=$('pinmsg');
   if(!p){ msg.textContent='Enter latitude and longitude (e.g. 9.0765, 7.3986), degrees-minutes-seconds, or paste a Google Maps, Apple Maps or OpenStreetMap link.'; return; }
-  if(!pickSpot(p[0],p[1],true)){ msg.textContent='That point is outside Nigeria.'; return; }
+  msg.textContent='Valuing this spot\u2026';
+  if(!(await pickSpot(p[0],p[1],true))){ msg.textContent='That point is outside Nigeria.'; return; }
   msg.textContent=`Valued ${p[0].toFixed(5)}, ${p[1].toFixed(5)}.`; history.replaceState(null,'','#at='+p[0].toFixed(5)+','+p[1].toFixed(5)); }
 $('pinform').addEventListener('submit',e=>{ e.preventDefault(); goSpot(); });
 $('pinme').addEventListener('click',()=>{ const msg=$('pinmsg'); if(!navigator.geolocation){ msg.textContent='This browser cannot share its location.'; return; }
@@ -385,12 +510,15 @@ function search(q){
   const out=[];
   for(const s of ST) if(norm(SC[s.c]).startsWith(q)||s.c.toLowerCase()===q) out.push({k:'s',id:s.c,label:SC[s.c],sub:'State \u00b7 capital '+s.cap,score:0});
   LG.forEach((g,i)=>{ const n=norm(g.n); if(n.startsWith(q)) out.push({k:'l',id:i,label:g.n+' LGA',sub:SC[g.s],score:1}); else if(n.includes(q)) out.push({k:'l',id:i,label:g.n+' LGA',sub:SC[g.s],score:3}); });
-  const sub=j=>TYPEN[PL.t[j]]+' \u00b7 '+(PL.pa[j]>=0?PL.n[PL.pa[j]]+', ':PL.W[PL.w[j]]?PL.W[PL.w[j]]+', ':'')+LG[PL.g[j]].n+', '+SC[LG[PL.g[j]].s];
-  for(let j=0;j<SIDX.length&&out.length<400;j++){ const n=SIDX[j]; if(n.startsWith(q)) out.push({k:'p',id:j,label:PL.n[j],sub:sub(j),score:2+DRANK[PL.t[j]]*0.1-Math.log10(PL.v[j]+1)*0.01}); else if(q.length>=4&&n.includes(' '+q)) out.push({k:'p',id:j,label:PL.n[j],sub:sub(j),score:4+DRANK[PL.t[j]]*0.1}); }
+  if(SIDX){ const sub=j=>TYPEN[PL.t[j]]+' \u00b7 '+(PL.pa[j]>=0?PL.n[PL.pa[j]]+', ':PL.W[PL.w[j]]?PL.W[PL.w[j]]+', ':'')+LG[PL.g[j]].n+', '+SC[LG[PL.g[j]].s];
+    for(let j=0;j<SIDX.length&&out.length<400;j++){ const n=SIDX[j]; if(!n) continue; if(n.startsWith(q)) out.push({k:'p',id:j,label:PL.n[j],sub:sub(j),score:2+DRANK[PL.t[j]]*0.1-Math.log10(PL.v[j]+1)*0.01}); else if(q.length>=4&&n.includes(' '+q)) out.push({k:'p',id:j,label:PL.n[j],sub:sub(j),score:4+DRANK[PL.t[j]]*0.1}); } }
   return out.sort((a,b)=>a.score-b.score).slice(0,14);
 }
 const qi=$('q'), sg=$('sugg'); let sres=[], sact=-1;
-function showSugg(){ sres=search(qi.value); sact=-1; if(!sres.length){ sg.hidden=true; return; } sg.innerHTML=sres.map((r,i)=>`<li><button type="button" role="option" data-i="${i}"><span>${esc(r.label)}</span><span class="k">${esc(r.sub)}</span></button></li>`).join(''); sg.hidden=false; }
+function showSugg(){ const raw=qi.value; sres=search(raw); sact=-1;
+  if(!placesReady && norm(raw).length>=2 && !parsePostcode(raw) && !parseSpot(raw)) ensurePlaces().then(()=>{ if(qi.value===raw) showSugg(); });
+  if(!sres.length){ if(!placesReady && norm(raw).length>=2 && !parsePostcode(raw) && !parseSpot(raw)){ sg.innerHTML='<li><button type="button" disabled><span>Searching places\u2026</span></button></li>'; sg.hidden=false; return; } sg.hidden=true; return; }
+  sg.innerHTML=sres.map((r,i)=>`<li><button type="button" role="option" data-i="${i}"><span>${esc(r.label)}</span><span class="k">${esc(r.sub)}</span></button></li>`).join(''); sg.hidden=false; }
 function pick(r){ sg.hidden=true; qi.value=r.label; document.getElementById('mapsec').scrollIntoView(); if(r.k==='s') selectState(r.id); else if(r.k==='l') selectLGA(r.id); else if(r.k==='pc') showPostcode(r.id); else if(r.k==='at') pickSpot(r.id[0],r.id[1],true); else selectPlace(r.id); }
 qi.addEventListener('input',showSugg);
 qi.addEventListener('keydown',e=>{ if(sg.hidden) return; if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); sact=(sact+(e.key==='ArrowDown'?1:-1)+sres.length)%sres.length; [...sg.querySelectorAll('button')].forEach((b,i)=>b.setAttribute('aria-selected',i===sact)); } else if(e.key==='Enter'){ e.preventDefault(); pick(sres[Math.max(0,sact)]); } else if(e.key==='Escape') sg.hidden=true; });
@@ -445,6 +573,14 @@ function tables(){
   const pT={page:0};
   function prender(){
     const q=norm($('pq').value), s=$('pst').value, ty=$('pty').value, so=$('psort').value, hk=TABS[TAB].head;
+    const def=TAB==='land'&&!q&&!s&&ty===''&&so==='v'&&pT.page===0;
+    if(!placesReady){
+      if(def && $('ptable').querySelector('tbody').children.length) return;
+      const tb=$('ptable').querySelector('tbody');
+      if(tb) tb.innerHTML='<tr><td colspan="10" class="muted">Loading places\u2026</td></tr>';
+      ensurePlaces().then(()=>{ if(placesReady) prender(); });
+      return;
+    }
     const out=[]; const n=PL.n.length;
     for(let j=0;j<n;j++){ if(s&&LG[PL.g[j]].s!==s) continue; if(ty!==''){ const t=PL.t[j]; if(ty==='6'? !(t===6||t===7) : t!==+ty) continue; } if(q&&!SIDX[j].includes(q)) continue; out.push(j); }
     const sv=hk==='res'?(j=>PL.v[j]):(j=>pval(j,hk)||0);
@@ -453,20 +589,38 @@ function tables(){
     const PC={land:[['res','Land \u20a6/m\u00b2'],['plot','Typical plot']],bld:[['sale3','3-bed flat'],['sale4','4-bed house']],rent:[['rent2','Rent 2-bed'],['rent3','Rent 3-bed']]}[TAB];
     $('ptable').querySelector('thead').innerHTML=`<tr><th data-k="">Place</th><th data-k="">Level</th><th data-k="">Within \u00b7 LGA</th><th data-k="">State</th>${PC.map(([,h])=>`<th data-k="" class="r">${h}</th>`).join('')}<th data-k="">Zone</th><th data-k="">Conf.</th><th data-k=""></th></tr>`;
     $('ptable').querySelector('tbody').innerHTML=out.slice(pT.page*ps,(pT.page+1)*ps).map(j=>{ const g=LG[PL.g[j]], v=placeVals(j); const within=PL.pa[j]>=0?PL.n[PL.pa[j]]:PL.W[PL.w[j]];
-      return `<tr><td class="nm"><button class="linkbtn" style="font-size:inherit;font-weight:600;text-decoration:none;color:var(--ink)" type="button" data-place="${j}">${esc(PL.n[j])}</button></td><td class="small"><span class="tag ${URBAN_T.has(PL.t[j])?'u':''}">${TYPEN[PL.t[j]]}</span></td><td class="small">${within?esc(within)+' \u00b7 ':''}${esc(g.n)}</td><td class="mono">${g.s}</td>${PC.map(([k],n)=>`<td class="r num">${n===1?'':'<b>'}${k==='plot'?short(v.res*(g.plot||600)):fmtL(k,v[k])}${n===1?'':'</b>'}</td>`).join('')}<td class="small"><span class="zdot" style="background:${ZONEC[PL.z[j]]}"></span>${esc((META.zones||[])[PL.z[j]]||'')}</td><td>${confCell(PL.c[j])}</td><td><button class="linkbtn" type="button" data-place="${j}">Map</button></td></tr>`; }).join('')||'<tr><td colspan="10" class="muted">No places match.</td></tr>';
+      return `<tr><td class="nm"><button class="linkbtn" style="font-size:inherit;font-weight:600;text-decoration:none;color:var(--ink)" type="button" data-place="${j}" data-st="${g.s}">${esc(PL.n[j])}</button></td><td class="small"><span class="tag ${URBAN_T.has(PL.t[j])?'u':''}">${TYPEN[PL.t[j]]}</span></td><td class="small">${within?esc(within)+' \u00b7 ':''}${esc(g.n)}</td><td class="mono">${g.s}</td>${PC.map(([k],n)=>`<td class="r num">${n===1?'':'<b>'}${k==='plot'?short(v.res*(g.plot||600)):fmtL(k,v[k])}${n===1?'':'</b>'}</td>`).join('')}<td class="small"><span class="zdot" style="background:${ZONEC[PL.z[j]]}"></span>${esc((META.zones||[])[PL.z[j]]||'')}</td><td>${confCell(PL.c[j])}</td><td><button class="linkbtn" type="button" data-place="${j}" data-st="${g.s}">Map</button></td></tr>`; }).join('')||'<tr><td colspan="10" class="muted">No places match.</td></tr>';
     $('ppager').innerHTML=`<button class="btn ghost sm" type="button" data-p="-1" ${pT.page?'':'disabled'}>Previous</button><span>Page ${pT.page+1} of ${pages.toLocaleString('en-NG')} \u00b7 ${out.length.toLocaleString('en-NG')} places</span><button class="btn ghost sm" type="button" data-p="1" ${pT.page<pages-1?'':'disabled'}>Next</button>`;
   }
   let pt=0; ['pq','pst','pty','psort'].forEach(id=>$(id).addEventListener('input',()=>{ clearTimeout(pt); pt=setTimeout(()=>{pT.page=0; prender();},120); }));
   $('ppager').addEventListener('click',e=>{ const b=e.target.closest('[data-p]'); if(b){ pT.page+=+b.dataset.p; prender(); } });
   $('ptable').addEventListener('click',e=>{ const b=e.target.closest('[data-place]'); if(b){ selectPlace(+b.dataset.place); $('mapsec').scrollIntoView(); } });
   TBL();
-  // evidence
-  const eT=sortable($('etable'),[
-    {k:'label',h:'Location',asc:true},{k:'st',h:'State',asc:true},{k:'med',h:'Median',r:1},{k:'p25',h:'Middle half of listings',r:1},{k:'n',h:'Listings',r:1,def:1},{k:'x',h:'',sort:false}
-  ],()=>{ const m=$('em').value, q=norm($('eq').value); return EV.filter(e=>e.m===m&&e.n>=5&&(!q||norm(e.label+' '+SC[e.st]).includes(q))); },
-  e=>`<tr><td class="nm">${esc(e.label)}</td><td class="mono">${e.st}</td><td class="r num"><b>${short(e.med)}</b></td><td class="r num">${short(e.p25)} \u2013 ${short(e.p75)}</td><td class="r num">${e.n}</td><td><button class="linkbtn" type="button" data-at="${e.lat},${e.lng}">Map</button></td></tr>`,$('epager'));
-  ['em','eq'].forEach(id=>$(id).addEventListener('input',eT.reset)); eT.go();
-  $('etable').addEventListener('click',e=>{ const b=e.target.closest('[data-at]'); if(b){ const [a,c]=b.dataset.at.split(',').map(Number); pickSpot(a,c,true); $('mapsec').scrollIntoView(); } });
+  // evidence stays as printed until the section is on screen or a control is used
+  let evBoot=null;
+  function bootEvidence(){
+    if(evBoot) return evBoot;
+    evBoot=ensureEvidence().then(()=>{
+      const eT=sortable($('etable'),[
+        {k:'label',h:'Location',asc:true},{k:'st',h:'State',asc:true},{k:'med',h:'Median',r:1},{k:'p25',h:'Middle half of listings',r:1},{k:'n',h:'Listings',r:1,def:1},{k:'x',h:'',sort:false}
+      ],()=>{ const m=$('em').value, q=norm($('eq').value); return EV.filter(e=>e.m===m&&e.n>=5&&(!q||norm(e.label+' '+SC[e.st]).includes(q))); },
+      e=>`<tr><td class="nm">${esc(e.label)}</td><td class="mono">${e.st}</td><td class="r num"><b>${short(e.med)}</b></td><td class="r num">${short(e.p25)} \u2013 ${short(e.p75)}</td><td class="r num">${e.n}</td><td><button class="linkbtn" type="button" data-at="${e.lat},${e.lng}">Map</button></td></tr>`,$('epager'));
+      ['em','eq'].forEach(id=>$(id).addEventListener('input',eT.reset));
+      eT.go();
+    }).catch(()=>{ evBoot=null; });
+    return evBoot;
+  }
+  $('etable').addEventListener('click',e=>{
+    const b=e.target.closest('[data-at]');
+    if(b){ const [a,c]=b.dataset.at.split(',').map(Number); pickSpot(a,c,true); $('mapsec').scrollIntoView(); return; }
+    if(e.target.closest('th')) bootEvidence();
+  });
+  $('epager').addEventListener('click',e=>{ if(e.target.closest('[data-p]')) bootEvidence(); });
+  ['em','eq'].forEach(id=>$(id).addEventListener('input',()=>bootEvidence()));
+  if('IntersectionObserver' in window){
+    const io=new IntersectionObserver(es=>{ if(es.some(x=>x.isIntersecting)){ io.disconnect(); bootEvidence(); } },{rootMargin:'0px',threshold:0.01});
+    const sec=$('evidence'); if(sec) io.observe(sec);
+  }
 }
 
 /* ---------- estimator: land + building + rent ---------- */
@@ -497,7 +651,7 @@ function method(){
   $('methodcols').innerHTML=`
   <div><h3>The evidence</h3><p>In the week of ${dlong(m.date)} we read ${m.nListings.toLocaleString('en-NG')} land, house and rental listings from Nigeria Property Centre and Jiji across all 37 states, plus Nigeria Property Centre's ${esc(m.avgMonth||'latest')} locality medians. The book is rebuilt every week. Each listing was placed on the map from its address. A land listing counts when its price and plot size are both stated; prices per m\u00b2, per plot, per acre and per hectare are converted to \u20a6 per m\u00b2.</p>
   <ul><li>${m.counts.land_res.toLocaleString('en-NG')} residential land listings</li><li>${m.counts.land_com.toLocaleString('en-NG')} commercial and mixed-use</li><li>${m.counts.land_ind.toLocaleString('en-NG')} industrial</li><li>${m.counts.land_farm.toLocaleString('en-NG')} farmland</li><li>${m.counts.rent.toLocaleString('en-NG')} rentals and ${m.counts.sale.toLocaleString('en-NG')} house sales</li></ul></div>
-  <div><h3>The model</h3><p>Residential land is modelled from state, distance to the state capital and the big metros, distance to the nearest town and how built-up the surroundings are, then pulled toward the actual listings within a few kilometres. Every settlement in the GRID3 national register and every named area, district, neighbourhood, gated estate and gated area in OpenStreetMap (${PL.n.length.toLocaleString('en-NG')} places across ${PL.W.filter(Boolean).length.toLocaleString('en-NG')} wards) is valued this way, and placed in its city or town.</p>
+  <div><h3>The model</h3><p>Residential land is modelled from state, distance to the state capital and the big metros, distance to the nearest town and how built-up the surroundings are, then pulled toward the actual listings within a few kilometres. Every settlement in the GRID3 national register and every named area, district, neighbourhood, gated estate and gated area in OpenStreetMap (${(META.nPlaces||0).toLocaleString('en-NG')} places across ${(META.nWards||0).toLocaleString('en-NG')} wards) is valued this way, and placed in its city or town.</p>
   <p style="margin-top:8px"><b>Calibration.</b> Online listings over-represent premium plots (GRAs, titled estates, large plots), and many give only a city name. So each listing is placed at the neighbourhood named in its title where possible; listings that name only a city stand for that city at the lower-middle of their price range, not the median; plots advertised without a size are kept at the region\u2019s standard plot (60\xd7120 ft south-west, 50\xd7100 ft east and south-south, 100\xd7100 ft Edo, about 900 m\xb2 north). The overall level is checked against independent figures (the NPC market report and published area guides for Enugu, Benin, Ilorin and rural land) and scaled to match them.</p>
   <p style="margin-top:8px"><b>Towns, villages and farmland.</b> Away from the cities, villages and remote places are valued well below towns and capped at a small share of the state capital\u2019s typical value unless local listings say otherwise; farmland is priced per hectare at about a tenth of the village plot rate. Rents and house prices outside the cities are scaled to ordinary housing, because the few listings there are mostly new estate flats.</p>
   <p style="margin-top:8px"><b>Economic zones.</b> Each metro, state capital and city is split into prime, high-, middle- and lower-income zones by land value within that urban area (every place inside the built-up area, whatever its register type); the rest are small towns, villages and remote farmland. Building and rental values use the same method on house sales and rents. Fit on held-out market locations: residential land within a factor of 2 for ${m.fit.within2}% of locations.</p></div>
@@ -521,7 +675,7 @@ function lgaContaining(lat,lng){
   // just outside a simplified edge (coast, border): nearest LGA centre within 15 km
   let d0=15; for(let i=0;i<LG.length;i++){ const d=km(lat,lng,LG[i].lat,LG[i].lng); if(d<d0){d0=d;best=i;} } return best;
 }
-function pickSpot(lat,lng,fly){ const i=lgaContaining(lat,lng); if(i<0) return false; if(fly) MAPI.flyPlace(lat,lng,4); selectPoint(lat,lng,i); return true; }
+async function pickSpot(lat,lng,fly){ await ensureGeo(); const i=lgaContaining(lat,lng); if(i<0) return false; if(fly) ensureMap().then(()=>MAPI.flyPlace(lat,lng,4)); await selectPoint(lat,lng,i); return true; }
 
 /* ---------- NIPOST postcodes (postcode.gov.ng) ---------- */
 const PC_RE=/^([A-Z]{2})[\s-]?(\d{2})[\s-]?([A-Z0-9]{3})[\s-]?([A-Z]{2})[\s-]?(\d{2})$/;
@@ -583,7 +737,8 @@ function MapboxMap(){
   function placesFC(){
     const z=map.getZoom(), b=map.getBounds(); const maxT=z<6.2?0: z<7.6?1: z<9?2: z<10.3?4: z<11.3?5: 7;
     let js=[];
-    if(z<6.2){ for(let j=0;j<PL.t.length;j++) if(PL.t[j]===0) js.push(j); }
+    if(!PIDX||!PL) return {type:'FeatureCollection',features:[]};
+    if(z<6.2) js=CITIES.map(c=>c.i);
     else { const gx0=Math.floor(b.getWest()*5), gx1=Math.floor(b.getEast()*5), gy0=Math.floor(b.getSouth()*5), gy1=Math.floor(b.getNorth()*5);
       for(let gx=gx0;gx<=gx1;gx++) for(let gy=gy0;gy<=gy1;gy++){ const a=PIDX.get(gx+':'+gy); if(a) for(const j of a) if(DRANK[PL.t[j]]<=maxT) js.push(j); } }
     if(js.length>7000){ js.sort((a,b)=>DRANK[PL.t[a]]-DRANK[PL.t[b]]||PL.v[b]-PL.v[a]); js=js.slice(0,7000); }
@@ -607,7 +762,11 @@ function MapboxMap(){
     curLayer=layer; selShown=-1; hoverShown=-1; api.refresh();
   }
   map.on('style.load',addLayers);
-  map.on('moveend',()=>{ clearTimeout(plTimer); plTimer=setTimeout(()=>{ const s=map.getSource('pl'), sL=map.getSource('plL'); if(s){ const d=placesFC(); s.setData(d); if(sL) sL.setData(d); } },60); });
+  map.on('moveend',()=>{ clearTimeout(plTimer); plTimer=setTimeout(()=>{
+    const z=map.getZoom(), b=map.getBounds();
+    const pending=z<6.2?Promise.resolve():Promise.all(statesInBox(b.getSouth(),b.getWest(),b.getNorth(),b.getEast()).map(ensureStatePlaces));
+    pending.then(()=>{ const s=map.getSource('pl'), sL=map.getSource('plL'); if(s){ const d=placesFC(); s.setData(d); if(sL) sL.setData(d); } });
+  },60); });
   const setHover=i=>{ if(i===hoverShown) return; if(hoverShown>=0) map.setFeatureState({source:'lga',id:hoverShown},{hover:false}); hoverShown=i; if(i>=0) map.setFeatureState({source:'lga',id:i},{hover:true}); };
   const box=p=>[[p.x-6,p.y-6],[p.x+6,p.y+6]];
   map.on('mousemove',e=>{
@@ -645,39 +804,85 @@ function MapboxMap(){
 }
 
 /* ---------- deep links: #state=LA  #lga=LA/ikeja  #at=6.45,3.42  #postcode=EK-01-A03-FK-01 ---------- */
-function route(){
+async function route(){
   const h=decodeURIComponent(location.hash.slice(1)); if(!h) return false; const [k,v]=h.split('=');
   if(k==='state'&&SC[v]&&STI[v]!=null){ selectState(v); return true; }
-  if(k==='lga'&&v){ const [s,l]=v.split('/'); const i=LG.findIndex(g=>g.s===s&&slug(g.n)===l); if(i>=0){ selectLGA(i); return true; } }
-  if(k==='at'&&v){ const [a,b]=v.split(',').map(Number); if(isFinite(a)&&isFinite(b)) return pickSpot(a,b,true); }
+  if(k==='lga'&&v){ const [s,l]=v.split('/'); const i=LG.findIndex(g=>g.s===s&&slug(g.n)===l); if(i>=0){ await selectLGA(i); return true; } }
+  if(k==='at'&&v){ const [a,b]=v.split(',').map(Number); if(isFinite(a)&&isFinite(b)) return !!(await pickSpot(a,b,true)); }
   if(k==='postcode'&&v){ const p=parsePostcode(v); if(p){ showPostcode(p); return true; } }
   return false;
 }
 
 /* ---------- shared into the installed app (Android share sheet): a map link or coordinates opens on that spot ---------- */
-function shared(){
+async function shared(){
   const u=new URLSearchParams(location.search); const txt=[u.get('su'),u.get('stx'),u.get('st')].filter(Boolean).join(' '); if(!txt) return false;
   history.replaceState(null,'',location.pathname+location.hash);
   const p=parseSpot(txt)||(txt.match(/https?:\/\/\S+/g)||[]).map(parseSpot).find(Boolean);
-  if(p&&pickSpot(p[0],p[1],true)){ history.replaceState(null,'','#at='+p[0].toFixed(5)+','+p[1].toFixed(5)); $('mapsec').scrollIntoView({block:'start'}); return true; }
+  if(p&&await pickSpot(p[0],p[1],true)){ history.replaceState(null,'','#at='+p[0].toFixed(5)+','+p[1].toFixed(5)); $('mapsec').scrollIntoView({block:'start'}); return true; }
   $('pinq').value=txt.slice(0,300); $('pinmsg').textContent='No coordinates found in what was shared. In Google Maps, drop a pin and share that pin, or paste the coordinates here.'; $('pinform').scrollIntoView({block:'center'}); return false;
+}
+
+/* ---------- open the map only when it is on screen or the reader asks ---------- */
+let viewTok=0, mapP=null, canvasSized=false;
+function syncViewPlaces(){
+  if(!MAN||!PL||MAPI.kind==='mapbox'||view.s<90) return;
+  const r=canvas.getBoundingClientRect(); if(!r.width) return;
+  const [la1,lo0]=toLL(0,0), [la0,lo1]=toLL(r.width,r.height);
+  const need=statesInBox(Math.min(la0,la1),Math.min(lo0,lo1),Math.max(la0,la1),Math.max(lo0,lo1));
+  const tok=++viewTok;
+  Promise.all(need.map(ensureStatePlaces)).then(()=>{ if(tok===viewTok && MAPI.kind==='canvas') draw(); });
+}
+function useCanvas(){
+  MAPI=CANVAS_MAP; $('mbmap').hidden=true; canvas.hidden=false;
+  resize(); fitAll();
+  if(!canvasSized){ canvasSized=true; new ResizeObserver(()=>resize()).observe(canvas); }
+}
+function ensureMap(){
+  if(mapP) return mapP;
+  const btn=$('showmap'); if(btn) btn.textContent='Loading map\u2026';
+  mapP=(async()=>{
+    await loadSummary();
+    await ensureGeo();
+    readColors();
+    const ph=$('mapph'); if(ph) ph.hidden=true;
+    $('mapcard').classList.add('on');
+    const tok=NP().mapboxToken;
+    if(tok){
+      try{
+        await loadMapbox();
+        if(window.mapboxgl&&mapboxgl.supported&&!mapboxgl.supported()) throw new Error('WebGL unavailable');
+        MAPI=MapboxMap();
+      }catch(err){ console.warn('Mapbox unavailable, using the plain map', err); useCanvas(); }
+    } else useCanvas();
+    syncViewPlaces();
+  })().catch(err=>{ mapP=null; if(btn) btn.textContent='Show map'; throw err; });
+  return mapP;
+}
+function setupMapTrigger(){
+  const card=$('mapcard'), start=()=>{ ensureMap().catch(()=>{}); };
+  const btn=$('showmap'); if(btn) btn.addEventListener('click',e=>{ e.stopPropagation(); start(); });
+  const ph=$('mapph'); if(ph) ph.addEventListener('click',start);
+  if(card && 'IntersectionObserver' in window){
+    const io=new IntersectionObserver(es=>{ if(es.some(x=>x.isIntersecting&&x.intersectionRatio>=0.25)){ io.disconnect(); start(); } },{threshold:[0.25]});
+    io.observe(card);
+  }
 }
 
 /* ---------- boot ---------- */
 (async()=>{
   readColors();
-  try{ await load(); }catch(err){ $('panel').innerHTML='<p class="note">The data files did not load. Reload the page to try again.</p>'; return; }
+  setupMapTrigger();
+  try{ await loadSummary(); }catch(err){ console.warn('Summary did not load; the printed figures stay on the page.', err); return; }
   dispatchEvent(new Event('lvb:data'));
   FX=META.fx||FX; BUILD=META.build||BUILD;
   $('edDate').textContent=dlong(META.date); $('edFx').textContent=FX.toLocaleString('en-NG'); $('sDate').textContent=dlong(META.date);
   $('buildRate').textContent=fmt(BUILD); document.querySelectorAll('.evDate').forEach(e=>e.textContent=dlong(META.date));
-  $('sPlaces').textContent=PL.n.length.toLocaleString('en-NG'); $('hPlaces').textContent=PL.n.length.toLocaleString('en-NG'); $('sWards').textContent=PL.W.filter(Boolean).length.toLocaleString('en-NG'); $('sEv').textContent=EV.filter(e=>e.m==='land_res').length.toLocaleString('en-NG');
+  $('sPlaces').textContent=META.nPlaces.toLocaleString('en-NG'); $('hPlaces').textContent=META.nPlaces.toLocaleString('en-NG');
+  $('sWards').textContent=META.nWards.toLocaleString('en-NG'); $('sEv').textContent=META.nEv.toLocaleString('en-NG');
   $('sListings').textContent=META.nListings.toLocaleString('en-NG'); $('hListings').textContent=META.nListings.toLocaleString('en-NG');
-  buildPaths(); computeBreaks(); buildLayers(); legend(); buildSearch();
-  if(NP().mapboxToken){ try{ await loadMapbox(); if(mapboxgl.supported&&!mapboxgl.supported()) throw new Error('WebGL unavailable'); MAPI=MapboxMap(); }catch(err){ console.warn('Mapbox unavailable, using the plain map', err); MAPI=CANVAS_MAP; $('mbmap').hidden=true; canvas.hidden=false; } }
-  if(MAPI===CANVAS_MAP){ resize(); fitAll(); new ResizeObserver(()=>resize()).observe(canvas); }
-  if(!shared()&&!route()) nationalPanel();
-  window.addEventListener('hashchange',route);
+  computeBreaks(); buildLayers(); legend();
+  window.addEventListener('hashchange',()=>{ route(); });
+  if(!(await shared()) && !(await route())) nationalPanel();
   tables(); method();
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readColors(); MAPI.refresh();});
   new MutationObserver(()=>{readColors(); MAPI.refresh();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});

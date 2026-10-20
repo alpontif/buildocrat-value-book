@@ -1,12 +1,24 @@
 <!doctype html>
-<html lang="en-NG"><head><!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-BLGWN0LVSG"></script>
+<html lang="en-NG"><head><!-- Google tag (gtag.js) and X pixel rhmpt, after load -->
 <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+function lbLoadTags(){
+  if (window.__lbTags) return; window.__lbTags = 1;
+  var g = document.createElement('script');
+  g.async = true;
+  g.src = 'https://www.googletagmanager.com/gtag/js?id=G-BLGWN0LVSG';
+  document.head.appendChild(g);
   gtag('js', new Date());
-
   gtag('config', 'G-BLGWN0LVSG');
+  !function(e,t,n,s,u,a){e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);
+  },s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='https://static.ads-twitter.com/uwt.js',
+  a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');
+  twq('config','rhmpt');
+  twq('event','tw-rhmpt-14r33g');
+}
+if (document.readyState === 'complete') setTimeout(lbLoadTags, 1);
+else window.addEventListener('load', function () { setTimeout(lbLoadTags, 1); });
 </script>
 <script>
 document.addEventListener('click', function (e) {
@@ -21,7 +33,7 @@ document.addEventListener('click', function (e) {
 <title>Buildocrat Value Lens for Chrome</title>
 <meta name="description" content="A Chrome extension that shows land, building and rental values as you hover over Google Maps or OpenStreetMap anywhere in Nigeria.">
 <link rel="canonical" href="https://value.buildocrat.store/extension/">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1D2675"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1D2675"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <style>
 :root{--bg:#EFEFF3;--surface:#fff;--ink:#22275A;--muted:#5E638E;--line:#D3D6EA;--navy:#1D2675;--lav:#DCDFF2}
 @media (prefers-color-scheme:dark){:root{--bg:#0F1234;--surface:#171B47;--ink:#E7E9FA;--muted:#A3A8D6;--line:#2C3270;--navy:#C9CEFF;--lav:#252B66;color-scheme:dark}}
@@ -34,15 +46,7 @@ p,li{color:var(--muted)}b{color:var(--ink)}a{color:#3C49A1}
 .cta{display:inline-block;margin:10px 10px 0 0;padding:12px 22px;border-radius:999px;background:#1D2675;color:#fff;text-decoration:none;font-weight:700}
 .card{background:var(--lav);border-radius:16px;padding:18px 22px;margin-top:18px}.card h2{margin-top:0}
 ol li{margin-bottom:6px}code{font-family:inherit;font-weight:600;color:var(--navy)}
-</style><!-- X pixel rhmpt -->
-<script>
-!function(e,t,n,s,u,a){e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);
-},s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='https://static.ads-twitter.com/uwt.js',
-a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');
-twq('config','rhmpt');
-twq('event','tw-rhmpt-14r33g');
-</script>
-</head><body><div class="w">
+</style></head><body><div class="w">
 <header><a href="/">Buildocrat Land Value Book</a></header><div class="sheet">
 <h1>Value Lens for Chrome</h1>
 <p>Hover over <b>Google Maps</b> (map or satellite) or <b>OpenStreetMap</b> anywhere in Nigeria and a small card shows the value at your cursor: land per m² and a typical plot, house prices and build cost, or rents and yields. Hold <b>Shift</b> to pin the card, switch between land, building and rent, and open the full report with the NIPOST postcode.</p>

@@ -1,4 +1,4 @@
-import json, pickle, math, collections, os, base64, datetime
+import json, pickle, math, collections, os, datetime
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 OUT = '../docs/data/'; os.makedirs(OUT, exist_ok=True)
 CFG = json.load(open('../site-config.json'))
@@ -96,8 +96,7 @@ for k in ('rent1','rent4','sale2','sale5'): meta['beta'][k]=M['RM_beta'].get(k) 
 for k in ('rent1','rent2','rent3','rent4','sale2','sale3','sale4','sale5'): meta['beta'][k]=max(0.15,min(0.9,meta['beta'][k]))
 json.dump({'states':states,'lgas':lgas,'borders':borders,'meta':meta}, open(OUT+'lgas.json','w'), separators=(',',':'))
 
-# places columnar, sorted by LGA then latitude; coordinates delta-encoded; gzip
-import gzip
+# places columnar, sorted by LGA then latitude; coordinates delta-encoded. split_data publishes the chunks.
 order = sorted(range(len(P)), key=lambda j:(P[j]['lga'], round(P[j]['lat']*1e4), round(P[j]['lng']*1e4)))
 wards = {}; W=[]
 pl={'n':[],'t':[],'la':[],'lo':[],'g':[],'v':[],'c':[],'w':[],'z':[]}
@@ -144,10 +143,7 @@ for k,t in enumerate(tk):
 pl['pk'] = [pk[0]] + [pk[i]-pk[i-1] for i in range(1, len(pk))] if pk else []
 pl['pp'] = pp
 print('parents', len(pk))
-raw=json.dumps(pl, separators=(',',':'), ensure_ascii=False).encode('utf-8')
-gzb=gzip.compress(raw, 9, mtime=0)
-open(OUT+'places.b64.txt','w').write(base64.b64encode(gzb).decode())
-print('places raw', len(raw), 'gz', len(gzb), 'wards', len(W))
+print('places', len(pl['n']), 'wards', len(W))
 
 # evidence nodes (all metrics, n>=3)
 ev=[]
@@ -157,6 +153,7 @@ for m in ['land_res','land_com','land_ind','land_farm','rent1','rent2','rent3','
         if nd['n']<3: continue
         f = 10000 if m=='land_farm' else 1
         ev.append({'m':m,'st':nd['st'],'label':nd['label'],'lat':round(nd['lat'],4),'lng':round(nd['lng'],4),'n':nd['n'],'med':rv(nd['med']*f),'p25':rv(nd['p25']*f),'p75':rv(nd['p75']*f)})
-json.dump(ev, open(OUT+'evidence.json','w'), separators=(',',':'), ensure_ascii=False)
+from split_data import publish
+publish({'states':states,'lgas':lgas,'borders':borders,'meta':meta}, pl, ev, os.path.abspath(OUT))
 import os
 for f in os.listdir(OUT): print(f, os.path.getsize(OUT+f))

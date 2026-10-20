@@ -1,6 +1,6 @@
 """Static, indexable pages and machine-readable files, so search engines and AI assistants can find, read and cite the book.
 
-Reads docs/data/lgas.json and docs/data/places.b64.txt (written by export.py) and writes into docs/:
+Reads docs/data/lgas.json and the per-state place chunks (written by export.py) and writes into docs/:
   /<state>/                     37 state pages
   /<state>/<lga>/               774 LGA pages
   /<state>/<lga>/<place>/       pages for cities, towns, districts, areas, gated estates and gated areas
@@ -9,7 +9,8 @@ Reads docs/data/lgas.json and docs/data/places.b64.txt (written by export.py) an
   the static "facts" block, structured data and verification tags inside index.html
 Every page carries schema.org JSON-LD (breadcrumbs, Place, FAQ, Dataset, Organization) and a WhatsApp button.
 """
-import json, os, re, html, datetime, shutil, base64, gzip, csv, urllib.parse
+import json, os, re, html, datetime, shutil, csv, urllib.parse
+from split_data import load_places_absolute, TAGS as GA, prerender
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DOCS = os.path.join(HERE, '..', 'docs')
@@ -73,36 +74,8 @@ def wa_button(text, label='Chat on WhatsApp'):
 def faq_ld(qas): return {"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in qas]}
 def faq_html(qas): return '<h2>Questions people ask</h2><div class="faq">' + ''.join(f'<h3>{e(q)}</h3><p>{e(a)}</p>' for q, a in qas) + '</div>'
 
-GA = """<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-BLGWN0LVSG"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-BLGWN0LVSG');
-</script>
-<script>
-document.addEventListener('click', function (e) {
-  var a = e.target && e.target.closest && e.target.closest('a');
-  if (!a || !a.href) return;
-  var u = a.href;
-  if (u.indexOf('wa.me') !== -1 || u.indexOf('api.whatsapp.com') !== -1) gtag('event', 'whatsapp_click', {link_url: u});
-  else if (u.indexOf('mailto:') === 0) gtag('event', 'email_click', {link_url: u});
-});
-</script>
-"""
-
-# X base pixel (site rhmpt) plus the Page View event (tag 14r33g).
-XPIXEL = """<!-- X pixel rhmpt -->
-<script>
-!function(e,t,n,s,u,a){e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);
-},s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='https://static.ads-twitter.com/uwt.js',
-a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');
-twq('config','rhmpt');
-twq('event','tw-rhmpt-14r33g');
-</script>
-"""
+# gtag and the X pixel (rhmpt, Page View tw-rhmpt-14r33g) are inside GA and run after load.
+XPIXEL = ''
 
 def page(path, title, desc, body, crumbs, extra_ld=(), wa_text=None):
     canon = SITE + path
@@ -116,7 +89,7 @@ def page(path, title, desc, body, crumbs, extra_ld=(), wa_text=None):
 <meta property="og:type" content="website"><meta property="og:site_name" content="Buildocrat Land Value Book"><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(desc)}"><meta property="og:url" content="{canon}"><meta property="og:image" content="{SITE}og.png">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{e(title)}"><meta name="twitter:description" content="{e(desc)}"><meta name="twitter:image" content="{SITE}og.png">
 <link rel="alternate" type="text/plain" title="LLM summary" href="/llms.txt">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#1D2675"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Land Values"><link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script><style>{CSS}</style>{XPIXEL}</head><body><div class="w">
 <header><a href="/"><b>Buildocrat Land Value Book</b></a><nav>{' › '.join(f'<a href="/{u}">{e(n)}</a>' for n, u in crumbs[:-1])}</nav><button class="inst" type="button" data-install hidden>Install app</button></header>
@@ -157,13 +130,9 @@ def qas_for(where, v, plot):
     if v.get('farm'): q.append((f'What is the price of farmland in {where}?', f'Farmland in {where} is about {naira(v["farm"])} per hectare ({MON}).'))
     return q
 
-# ---------------- places (decoded from the exported columnar file) ----------------
-pl = json.loads(gzip.decompress(base64.b64decode(open(os.path.join(DOCS, 'data', 'places.b64.txt')).read())))
-for k in range(1, len(pl['la'])): pl['la'][k] += pl['la'][k - 1]; pl['lo'][k] += pl['lo'][k - 1]
-N = len(pl['n']); PA = [-1] * N
-if pl.get('pk'):
-    k = 0
-    for d, p in zip(pl['pk'], pl['pp']): k += d; PA[k] = p
+# ---------------- places (absolute coordinates from the per-state chunks) ----------------
+pl = load_places_absolute(os.path.join(DOCS, 'data'))
+N = len(pl['n']); PA = pl['pa']
 LG = D['lgas']; B = META['beta']
 def pvals(j):  # same formula as app.js placeVals
     g = LG[pl['g'][j]]; v = pl['v'][j]; gv = g['v']; r = v / gv['res']; o = {'res': v}
@@ -382,6 +351,7 @@ facts = (f'<!--SEO:BODY--><section id="facts"><div class="sec-head"><div><p clas
 h = re.sub(r'<!--SEO:HEAD-->.*?<!--/SEO:HEAD-->', '', h, flags=re.S).replace('</head>', head + '\n</head>', 1)
 h = re.sub(r'<!--SEO:BODY-->.*?<!--/SEO:BODY-->', '', h, flags=re.S).replace('<footer>', facts + '\n\n  <footer>', 1)
 open(idx, 'w', encoding='utf-8').write(h)
+prerender(DOCS)
 
 # ---------------- sitemap, robots, CNAME ----------------
 sm = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + \
