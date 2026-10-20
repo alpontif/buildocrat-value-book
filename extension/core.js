@@ -14,25 +14,45 @@ var VL = (function () {
   function derive(v, st) { v.bpm = v.sale4 ? v.sale4 / GFA4 : null; v.bcost = BUILD * (STF[st] ?? 0.93); v.yld = (v.rent3 && v.sale3) ? 100 * v.rent3 / v.sale3 : null; return v; }
   const RURAL = t => t === 5 || t === 6 || t === 7;
 
-  async function gunzipB64(txt) {
-    const bin = atob(txt.trim()); const buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-    if (buf[0] === 0x1f && buf[1] === 0x8b) { const ds = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip')); return JSON.parse(await new Response(ds).text()); }
-    return JSON.parse(new TextDecoder().decode(buf));
+  async function gunzipJson(url) {
+    const res = await fetch(url); if (!res.ok) throw new Error(url + ' ' + res.status);
+    const buf = new Uint8Array(await res.arrayBuffer());
+    let text;
+    if (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b) {
+      const ds = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+      text = await new Response(ds).text();
+    } else text = new TextDecoder().decode(buf);
+    return JSON.parse(text);
   }
   async function load(base) {
-    const [a, b] = await Promise.all([fetch(base + 'data/lgas.json').then(r => { if (!r.ok) throw new Error('lgas ' + r.status); return r.json(); }),
-                                      fetch(base + 'data/places.b64.txt').then(r => { if (!r.ok) throw new Error('places ' + r.status); return r.text(); }).then(gunzipB64)]);
-    LG = a.lgas; META = a.meta; PL = b; BUILD = META.build || BUILD;
-    for (let j = 1; j < PL.la.length; j++) { PL.la[j] += PL.la[j - 1]; PL.lo[j] += PL.lo[j - 1]; }
-    PL.pa = new Int32Array(PL.n.length).fill(-1);
-    if (PL.pk) { let k = 0; PL.pk.forEach((d, i) => { k += d; PL.pa[k] = PL.pp[i]; }); }
-    if (!PL.z) PL.z = new Array(PL.n.length).fill(5);
+    if (base.slice(-1) !== '/') base += '/';
+    const man = await fetch(base + 'data/manifest.json').then(r => { if (!r.ok) throw new Error('manifest ' + r.status); return r.json(); });
+    const summary = await gunzipJson(base + man.summary);
+    LG = summary.lgas; META = summary.meta; BUILD = META.build || BUILD;
+    const n = META.nPlaces;
+    const [W, geos, chunks] = await Promise.all([
+      gunzipJson(base + man.wards),
+      Promise.all(Object.values(man.geo).map(u => gunzipJson(base + u))),
+      Promise.all(Object.values(man.places).map(u => gunzipJson(base + u)))
+    ]);
+    PL = { n: Array(n), t: Array(n), la: Array(n), lo: Array(n), g: Array(n), v: Array(n), c: Array(n), w: Array(n), z: Array(n), W: W, pa: new Int32Array(n).fill(-1) };
+    for (const ch of chunks) {
+      let id = 0, la = 0, lo = 0;
+      for (let k = 0; k < ch.n.length; k++) {
+        id = k ? id + ch.id[k] : ch.id[0];
+        la += ch.la[k]; lo += ch.lo[k];
+        PL.n[id] = ch.n[k]; PL.t[id] = ch.t[k]; PL.la[id] = la; PL.lo[id] = lo;
+        PL.g[id] = ch.g[k]; PL.v[id] = ch.v[k]; PL.c[id] = ch.c[k]; PL.w[id] = ch.w[k]; PL.z[id] = ch.z[k];
+        if (ch.pa[k] >= 0) PL.pa[id] = ch.pa[k];
+      }
+    }
     for (const g of LG) derive(g.v, g.s);
+    for (const geo of geos) for (const row of geo.r) LG[row.i].r = row.r;
     PIDX = new Map();
-    for (let j = 0; j < PL.n.length; j++) { const k = Math.floor(PL.lo[j] / 2000) + ':' + Math.floor(PL.la[j] / 2000); let arr = PIDX.get(k); if (!arr) { arr = []; PIDX.set(k, arr); } arr.push(j); }
-    RINGS = LG.map(g => { const rs = g.r.map(decode); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const r of rs) for (const [x, y] of r) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } return { rs, bb: [x0, y0, x1, y1] }; });
+    for (let j = 0; j < n; j++) { const k = Math.floor(PL.lo[j] / 2000) + ':' + Math.floor(PL.la[j] / 2000); let arr = PIDX.get(k); if (!arr) { arr = []; PIDX.set(k, arr); } arr.push(j); }
+    RINGS = LG.map(g => { const rs = (g.r || []).map(decode); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const r of rs) for (const [x, y] of r) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } return { rs, bb: [x0, y0, x1, y1] }; });
     loaded = true;
-    return { date: META.date, places: PL.n.length };
+    return { date: META.date, places: n };
   }
   function pip(x, y, r) { let c = false; for (let a = 0, b = r.length - 1; a < r.length; b = a++) { const [xi, yi] = r[a], [xj, yj] = r[b]; if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) c = !c; } return c; }
   function lgaAt(lat, lng) {

@@ -9,8 +9,12 @@
         .filter(u => { try { const x = new URL(u, location.href); return x.origin === location.origin && !/\/sw\.js$/.test(x.pathname); } catch (e) { return false; } });
       if (reg.active) reg.active.postMessage({ t: 'warm', urls: [...new Set(urls)] });
     }).catch(() => {});
-    if (document.getElementById('panel')) addEventListener('lvb:data', () => setTimeout(warm, 1500), { once: true });
-    else addEventListener('load', () => setTimeout(warm, 1500), { once: true });
+    if (document.getElementById('panel')) {
+      // summary first; place and geometry chunks only after the page has fetched them
+      addEventListener('lvb:data', () => setTimeout(warm, 1500), { once: true });
+      addEventListener('lvb:places', () => setTimeout(warm, 800), { once: true });
+      addEventListener('lvb:geo', () => setTimeout(warm, 800), { once: true });
+    } else addEventListener('load', () => setTimeout(warm, 1500), { once: true });
   }
   const ua = navigator.userAgent;
   const standalone = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches || navigator.standalone === true;

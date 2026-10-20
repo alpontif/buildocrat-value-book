@@ -2,11 +2,12 @@
    Pages and data: network first (so the weekly update shows straight away), cached copy when offline or slow.
    Scripts, icons, fonts, the map library: cached copy first, refreshed in the background.
    Mapbox map tiles and postcode lookups are never stored. */
-const VERSION = '2ee02b0d80';
+const VERSION = '10935d3fe2';
 const SHELL = 'lvb-shell-' + VERSION;  // one cache per edition; the old one is deleted when a new edition activates
-// Only small files at install. The page's own files and the data are added after the page has loaded them
-// (message 'warm' from pwa.js), straight from the browser's HTTP cache, so a first visit never downloads them twice.
-const PRECACHE = ['/offline.html', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png'];
+// Only the tiny shell at install. Place chunks, LGA geometry and the old bulk files are never
+// precached here; pwa.js may warm them after the page has actually used them.
+const PRECACHE = ['/offline.html', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png']
+  .filter(u => !/\/data\/(places|geo)\//.test(u) && !/\/data\/lgas\.json$/.test(u) && !/places\.b64\.txt$/.test(u));
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SHELL).then(c => Promise.all(PRECACHE.map(u => c.add(u).catch(() => {})))));
@@ -62,9 +63,10 @@ self.addEventListener('message', e => {
   if (e.data === 'skipWaiting') return self.skipWaiting();
   if (e.data && e.data.t === 'warm' && Array.isArray(e.data.urls)) e.waitUntil((async () => {
     const c = await caches.open(SHELL);
-    for (const u of e.data.urls.slice(0, 60)) {
+    for (const u of e.data.urls.slice(0, 120)) {
       try {
         const url = new URL(u, location.origin); if (url.origin !== location.origin || url.pathname === '/sw.js') continue;
+        if (/\/data\/lgas\.json$/.test(url.pathname) || /places\.b64\.txt$/.test(url.pathname)) continue;
         if (await c.match(url.href)) continue;
         const res = await fetch(url.href, { cache: 'force-cache' });   // served from the HTTP cache the page just filled
         if (res.ok) await c.put(url.href, res);
