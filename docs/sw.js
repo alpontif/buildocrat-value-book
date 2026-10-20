@@ -2,7 +2,7 @@
    Pages and data: network first (so the weekly update shows straight away), cached copy when offline or slow.
    Scripts, icons, fonts, the map library: cached copy first, refreshed in the background.
    Mapbox map tiles and postcode lookups are never stored. */
-const VERSION = '271e12f071';
+const VERSION = '10935d3fe2';
 const SHELL = 'lvb-shell-' + VERSION;  // one cache per edition; the old one is deleted when a new edition activates
 // Only the tiny shell at install. Place chunks, LGA geometry and the old bulk files are never
 // precached here; pwa.js may warm them after the page has actually used them.

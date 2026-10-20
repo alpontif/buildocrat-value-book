@@ -43,8 +43,8 @@ function manifest(){
   if(el && el.textContent && el.textContent.trim()!=='{}') MAN=JSON.parse(el.textContent);
   return MAN;
 }
-async function gunzipJson(url){
-  const res=await fetch(url); if(!res.ok) throw new Error(url+' '+res.status);
+async function gunzipJson(url, priority){
+  const res=await fetch(url, priority?{priority}:undefined); if(!res.ok) throw new Error(url+' '+res.status);
   const buf=new Uint8Array(await res.arrayBuffer());
   let text;
   if(buf.length>=2 && buf[0]===0x1f && buf[1]===0x8b){
@@ -86,21 +86,23 @@ function ingestPlaces(chunk){
     if(!known) indexPlace(id, lo, la);
   }
 }
+let placePri='high';
 function ensureWards(){
   if(PL && PL.W && PL.W.length) return Promise.resolve();
-  if(!wardsP) wardsP=gunzipJson(manifest().wards).then(w=>{ allocPL(); PL.W=w; });
+  if(!wardsP) wardsP=gunzipJson(manifest().wards, placePri).then(w=>{ allocPL(); PL.W=w; });
   return wardsP;
 }
 function ensureStatePlaces(st){
   if(loadedStates.has(st)) return Promise.resolve();
   if(stateP.has(st)) return stateP.get(st);
+  const pri=placePri;
   const p=(async()=>{
     await loadSummary();
     const url=manifest().places[st];
     await ensureWards();
-    ingestPlaces(await gunzipJson(url));
+    ingestPlaces(await gunzipJson(url, pri));
     loadedStates.add(st);
-    if(loadedStates.size===Object.keys(manifest().places).length){ placesReady=true; buildSearch(); dispatchEvent(new Event('lvb:places')); }
+    if(loadedStates.size===Object.keys(manifest().places).length){ placesReady=true; window.__lbPlacesReady=1; buildSearch(); dispatchEvent(new Event('lvb:places')); }
   })();
   stateP.set(st, p);
   return p;
@@ -113,7 +115,7 @@ function ensurePlaces(){
 function ensureGeo(){
   if(geoP) return geoP;
   geoP=(async()=>{
-    const parts=await Promise.all(Object.values(manifest().geo).map(gunzipJson));
+    const parts=await Promise.all(Object.values(manifest().geo).map(u=>gunzipJson(u,'high')));
     BORDERS=[];
     for(const p of parts){ for(const g of p.r) LG[g.i].r=g.r; for(const b of p.b||[]) BORDERS.push(b); }
     LGR=null;
@@ -124,7 +126,7 @@ function ensureGeo(){
 }
 function ensureEvidence(){
   if(EV.length) return Promise.resolve();
-  if(!evP) evP=gunzipJson(manifest().evidence).then(e=>{ EV=e; });
+  if(!evP) evP=gunzipJson(manifest().evidence, placePri).then(e=>{ EV=e; });
   return evP;
 }
 function statesInBox(lat0,lng0,lat1,lng1){
@@ -144,7 +146,7 @@ function loadSummary(){
   if(summaryP) return summaryP;
   summaryP=(async()=>{
     if(!manifest()) MAN=await fetch('data/manifest.json').then(r=>{ if(!r.ok) throw new Error('manifest'); return r.json(); });
-    const a=await gunzipJson(MAN.summary);
+    const a=await gunzipJson(MAN.summary,'high');
     ST=a.states; LG=a.lgas; META=a.meta; CITIES=a.cities||[]; FX=META.fx||FX; BUILD=META.build||BUILD;
     ST.forEach((s,i)=>STI[s.c]=i);
     for(const g of LG) derive(g.v,g.s);
@@ -294,12 +296,101 @@ canvas.addEventListener('pointerleave',()=>{ tip.hidden=true; if(hoverL>=0){hove
 canvas.addEventListener('wheel',e=>{ e.preventDefault(); const r=canvas.getBoundingClientRect(); zoomAt(e.deltaY<0?1.25:0.8,e.clientX-r.left,e.clientY-r.top); },{passive:false});
 canvas.addEventListener('dblclick',e=>{ const r=canvas.getBoundingClientRect(); zoomAt(2,e.clientX-r.left,e.clientY-r.top); });
 function zoomAt(f,px,py){ const ns=Math.max(25,Math.min(9000,view.s*f)); f=ns/view.s; view.tx=px-(px-view.tx)*f; view.ty=py-(py-view.ty)*f; view.s=ns; draw(); syncViewPlaces(); }
-$('zin').onclick=()=>ensureMap().then(()=>MAPI.zoom(1.6));
-$('zout').onclick=()=>ensureMap().then(()=>MAPI.zoom(1/1.6));
-$('zall').onclick=()=>ensureMap().then(()=>MAPI.fitAll());
+const svgMap=$('mapsvg');
+function svgVB(){ const p=(svgMap.getAttribute('viewBox')||'').trim().split(/[\s,]+/).map(Number); return {x:p[0],y:p[1],w:p[2],h:p[3]}; }
+function svgSet(vb){ svgMap.setAttribute('viewBox',vb.x+' '+vb.y+' '+vb.w+' '+vb.h); }
+function svgHome(){ return (svgMap.dataset.vb||'').trim().replace(/\s+/g,' '); }
+function svgOn(){ return svgMap && !svgMap.hidden && !$('mapcard').classList.contains('mb') && canvas.hidden; }
+function svgZoom(f,px,py){
+  if(!svgOn()) return;
+  const vb=svgVB(); const r=svgMap.getBoundingClientRect(); if(!r.width||!r.height) return;
+  const fx=px==null?0.5:px/r.width, fy=py==null?0.5:py/r.height;
+  const nw=Math.max(0.18, Math.min(vb.w*f, 20));
+  const nh=nw*(vb.h/vb.w);
+  const cx=vb.x+vb.w*fx, cy=vb.y+vb.h*fy;
+  svgSet({x:cx-nw*fx, y:cy-nh*fy, w:nw, h:nh});
+}
+function svgFit(){ if(svgOn()) svgMap.setAttribute('viewBox', svgMap.dataset.vb); }
+function svgFitBox(b){
+  if(!svgOn()||!b||!(b.width>0)) return;
+  const home=(svgMap.dataset.vb||'').trim().split(/[\s,]+/).map(Number);
+  const aspect=(home[2]||12.15)/(home[3]||10.05);
+  const pad=0.18*Math.max(b.width,b.height,0.35);
+  let w=b.width+pad*2, h=b.height+pad*2;
+  if(w/h>aspect) h=w/aspect; else w=h*aspect;
+  const cx=b.x+b.width/2, cy=b.y+b.height/2;
+  svgSet({x:cx-w/2, y:cy-h/2, w, h});
+}
+function svgFitLGA(i){ const p=svgMap&&svgMap.querySelector('path[data-lga="'+i+'"]'); if(p) svgFitBox(p.getBBox()); }
+function svgFitState(c){ const p=svgMap&&svgMap.querySelector('path.stb[data-st="'+c+'"]'); if(p) svgFitBox(p.getBBox()); }
+function svgFlyPlace(la,lo){ if(!svgOn()) return; const x=lo*CX, y=-la; const home=(svgMap.dataset.vb||'').trim().split(/[\s,]+/).map(Number); const aspect=(home[2]||12.15)/(home[3]||10.05); const w=1.5, h=w/aspect; svgSet({x:x-w/2,y:y-h/2,w,h}); }
+function svgMark(){
+  if(!svgMap) return;
+  svgMap.querySelectorAll('path.on').forEach(p=>p.classList.remove('on'));
+  if(selL>=0){ const p=svgMap.querySelector('path[data-lga="'+selL+'"]'); if(p) p.classList.add('on'); }
+}
+function paintSvgLayer(){
+  if(!svgMap||svgMap.hidden||!LG.length||!breaks[layer]) return;
+  svgMap.querySelectorAll('path[data-lga]').forEach(p=>{
+    const g=LG[+p.dataset.lga]; if(!g) return;
+    const c=cls(layer, g.v[layer]);
+    if(layer==='zone'){ p.style.fill=c<0?'var(--nd)':ZONEC[c]; }
+    else { p.style.fill=''; p.setAttribute('class','s'+Math.max(0,Math.min(6,c))+(p.classList.contains('on')?' on':'')); }
+  });
+}
+function handoffSvg(){
+  if(!svgMap||svgMap.hidden||MAPI.kind!=='mapbox') return;
+  const now=(svgMap.getAttribute('viewBox')||'').trim().replace(/\s+/g,' ');
+  if(now && now!==svgHome()){
+    const [x,y,w,h]=now.split(/[\s,]+/).map(Number);
+    const lng0=x/CX, lat1=-y, lng1=(x+w)/CX, lat0=-(y+h);
+    MAPI.fitLL(Math.min(lat0,lat1), Math.min(lng0,lng1), Math.max(lat0,lat1), Math.max(lng0,lng1));
+  }
+}
+function bindSvg(){
+  if(!svgMap) return;
+  window.__lbSvg=1;
+  let origin=null, moved=false;
+  svgMap.addEventListener('pointerdown',e=>{
+    if(e.button>0) return;
+    svgMap.setPointerCapture(e.pointerId);
+    origin={x:e.clientX,y:e.clientY,vb:svgVB()}; moved=false; svgMap.classList.add('drag');
+  });
+  svgMap.addEventListener('pointermove',e=>{
+    const r=svgMap.getBoundingClientRect();
+    if(origin){
+      const dx=e.clientX-origin.x, dy=e.clientY-origin.y;
+      if(Math.abs(dx)+Math.abs(dy)>4) moved=true;
+      if(moved){ const vb=origin.vb; svgSet({x:vb.x-dx/r.width*vb.w, y:vb.y-dy/r.height*vb.h, w:vb.w, h:vb.h}); tip.hidden=true; }
+      return;
+    }
+    if(!LG.length) return;
+    const city=e.target.closest&&e.target.closest('[data-place]');
+    const path=e.target.closest&&e.target.closest('[data-lga]');
+    const px=e.clientX-r.left, py=e.clientY-r.top;
+    if(city && PL && PL.have && PL.have[+city.dataset.place]) tip.innerHTML=tipPlace(+city.dataset.place);
+    else if(path) tip.innerHTML=tipLGA(+path.dataset.lga);
+    else { tip.hidden=true; return; }
+    tip.hidden=false; let x=px+14, y=py+12; if(x>r.width-250) x=px-250; if(y>r.height-90) y=py-80; tip.style.left=x+'px'; tip.style.top=y+'px';
+  });
+  const endSvg=()=>{ origin=null; svgMap.classList.remove('drag'); };
+  svgMap.addEventListener('pointerup',e=>{
+    const was=moved; endSvg(); if(was) return;
+    const city=e.target.closest&&e.target.closest('[data-place]');
+    if(city){ selectPlace(+city.dataset.place, true, city.dataset.st); return; }
+    const path=e.target.closest&&e.target.closest('[data-lga]');
+    if(path) selectLGA(+path.dataset.lga);
+  });
+  svgMap.addEventListener('pointercancel',endSvg);
+  svgMap.addEventListener('pointerleave',()=>{ tip.hidden=true; });
+  svgMap.addEventListener('wheel',e=>{ if(!svgOn()) return; e.preventDefault(); const r=svgMap.getBoundingClientRect(); svgZoom(e.deltaY<0?1/1.25:1.25, e.clientX-r.left, e.clientY-r.top); },{passive:false});
+}
+$('zin').onclick=()=>{ if(svgOn()) svgZoom(1/1.35); else ensureMap().then(()=>MAPI.zoom(1.6)); };
+$('zout').onclick=()=>{ if(svgOn()) svgZoom(1.35); else ensureMap().then(()=>MAPI.zoom(1/1.6)); };
+$('zall').onclick=()=>{ if(svgOn()) svgFit(); else ensureMap().then(()=>MAPI.fitAll()); };
 /* canvas map behind the common map interface (used when no Mapbox token is configured) */
 function lgaBox(i){ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; for(const enc of LG[i].r) for(const [lng,lat] of decode(enc)){ x0=Math.min(x0,lng);x1=Math.max(x1,lng);y0=Math.min(y0,lat);y1=Math.max(y1,lat);} return [y0,x0,y1,x1]; }
-const CANVAS_MAP={ kind:'canvas', refresh:()=>draw(), fitAll:()=>fitAll(), fitLL:(a,b,c,d)=>fitLL(a,b,c,d),
+const CANVAS_MAP={ kind:'canvas', refresh(){ draw(); paintSvgLayer(); svgMark(); }, fitAll:()=>fitAll(), fitLL:(a,b,c,d)=>fitLL(a,b,c,d),
   fitLGA(i){ const [a,b,c,d]=lgaBox(i); const p=0.15*Math.max(c-a,d-b); fitLL(a-p,b-p,c+p,d+p); },
   flyPlace(la,lo,t){ const [X,Y]=W2(lo,la); const r=canvas.getBoundingClientRect(); view.s=Math.max(view.s, t<=1?420:900); view.tx=r.width/2-X*view.s; view.ty=r.height/2-Y*view.s; draw(); syncViewPlaces(); },
   zoom(f){ const r=canvas.getBoundingClientRect(); zoomAt(f,r.width/2,r.height/2); },
@@ -356,23 +447,36 @@ function nearbyEvidence(la,lo){ const [m,lab,u]=EVM[TAB]; const rows=EV.filter(e
   return `<div><p class="eyebrow" style="margin-bottom:4px">${lab[0].toUpperCase()+lab.slice(1)} listings within 12 km</p><table class="mini">${rows.map(e=>`<tr><td>${esc(e.label)} <span class="muted small">${e.d.toFixed(1)} km</span></td><td class="r">${short(e.med)}${u}</td><td class="r muted">${e.n} listings</td></tr>`).join('')}</table></div>`; }
 function crumbs(parts){ return `<div class="crumbs">${parts.map(([t,a],i)=>(a?`<button type="button" data-go="${a}">${esc(t)}</button>`:`<span>${esc(t)}</span>`)+(i<parts.length-1?'<span>\u203a</span>':'')).join('')}</div>`; }
 function ancestors(j){ const out=[]; let p=PL.pa[j], n=0; while(p>=0&&n<5){ out.unshift(p); p=PL.pa[p]; n++; } return out; }
-let SEL=null, RER=null; // current selection and how to redraw it (for tab switches)
+let SEL=null, RER=null, panelGen=0; // current selection and how to redraw it (for tab switches)
 const WA_NO='2347018024292';
 function waText(s){ return s?`Hello Buildocrat, I'm interested in ${s.name.replace(/^Pinned spot/,'a spot')} on the Land Value Book: https://value.buildocrat.store/#at=${s.lat.toFixed(5)},${s.lng.toFixed(5)} . `:"Hello Buildocrat, I'm on the Land Value Book (value.buildocrat.store). "; }
 const waHref=s=>`https://wa.me/${WA_NO}?text=${encodeURIComponent(waText(s))}`;
 function setSel(s){ SEL=s; estimate(); const a=$('wa'); if(a) a.href=waHref(s); }
+function paintPlacePreview(j){
+  const g=LG[PL.g[j]], la=PL.la[j]/1e4, lo=PL.lo[j]/1e4, v=placeVals(j), t=PL.t[j], plot=g.plot||600;
+  selL=PL.g[j]; selState=null; selPt=[la,lo]; svgMark(); svgFlyPlace(la,lo);
+  const base=TAB==='land'?`LGA median ${short(g.v.res)}/m\u00b2.`:TAB==='bld'?`LGA typical ${short(g.v.sale4)}.`:`LGA typical ${short(g.v.rent3)} a year.`;
+  $('panel').innerHTML=`${crumbs([['Nigeria','ng'],[SC[g.s],'s:'+g.s],[g.n+' LGA','l:'+PL.g[j]],[PL.n[j],null]])}
+   <div class="ptitle"><div><h3>${esc(PL.n[j])}</h3><div class="tags"><span class="tag ${URBAN_T.has(t)?'u':''}">${URBAN_T.has(t)?'Urban':'Rural'} \u00b7 ${TYPEN[t]}</span><span class="tag">${g.cls} LGA</span></div></div>${confPill(PL.c[j])}</div>
+   ${valueBlock(v,plot,'',`${CONF[PL.c[j]][2]}. ${base}`)}`;
+  setSel({kind:'place',name:PL.n[j]+', '+g.n+' LGA, '+SC[g.s],lat:la,lng:lo,st:g.s,v,plot,conf:PL.c[j]});
+}
 async function selectPlace(j,fly=true,st){
+  const gen=++panelGen;
   RER=()=>selectPlace(j,false);
+  if(!PL){ try{ await loadSummary(); }catch(e){ return; } if(panelGen!==gen) return; }
   if(!(PL&&PL.full&&PL.full[j])){
     if(!st && PL&&PL.have&&PL.have[j]) st=LG[PL.g[j]].s;
     if(!st){ const btn=document.querySelector('[data-place="'+j+'"]'); st=btn&&btn.dataset.st; }
-    if(st) await ensureStatePlaces(st); else await ensurePlaces();
+    if(PL&&PL.have&&PL.have[j]) paintPlacePreview(j);
+    try{ if(st) await ensureStatePlaces(st); else await ensurePlaces(); }catch(e){ return; }
+    if(panelGen!==gen) return;
   }
   if(!(PL&&PL.full&&PL.full[j])) return;
   try{ await ensureEvidence(); }catch(e){}
   const g=LG[PL.g[j]], la=PL.la[j]/1e4, lo=PL.lo[j]/1e4, v=placeVals(j), t=PL.t[j], plot=g.plot||600;
-  selL=PL.g[j]; selState=null; selPt=[la,lo];
-  if(fly) ensureMap().then(()=>MAPI.flyPlace(la,lo,DRANK[t]));
+  selL=PL.g[j]; selState=null; selPt=[la,lo]; svgMark();
+  if(fly){ svgFlyPlace(la,lo); ensureMap().then(()=>MAPI.flyPlace(la,lo,DRANK[t])); }
   if(lgaPaths.length||MAPI.kind==='mapbox') MAPI.refresh();
   const anc=ancestors(j), kids=(PL.ch.get(j)||[]).slice().sort((a,b)=>PL.t[b]-PL.t[a]||PL.v[b]-PL.v[a]);
   const base=TAB==='land'?`LGA median ${short(g.v.res)}/m\u00b2.`:TAB==='bld'?`LGA typical ${short(g.v.sale4)}.`:`LGA typical ${short(g.v.rent3)} a year.`;
@@ -416,34 +520,41 @@ async function selectPoint(la,lo,i){
 const LTYPES=[['','All places'],['0','Cities'],['1','Towns'],['5','Villages'],['3','Areas'],['2','Districts'],['4','Neighbourhoods'],['8','Gated estates'],['9','Gated areas'],['6','Hamlets']];
 async function selectLGA(i,fly=true){
   if(!LG[i]) return loadSummary().then(()=>selectLGA(i,fly));
+  const gen=++panelGen;
   RER=()=>selectLGA(i,false);
   const g=LG[i];
-  await ensureStatePlaces(g.s);
   selL=i; selState=null; selPt=null;
-  if(fly) ensureMap().then(()=>{ MAPI.fitLGA(i); MAPI.refresh(); });
-  else if(lgaPaths.length||MAPI.kind==='mapbox') MAPI.refresh();
-  const hk=TABS[TAB].head;
-  const pl=[]; for(let j=0;j<PL.full.length;j++) if(PL.full[j]&&PL.g[j]===i) pl.push(j);
-  const pv=new Map(pl.map(j=>[j,pval(j,hk)||0])); pl.sort((a,b)=>pv.get(b)-pv.get(a));
   const note=TAB==='land'?`Urban areas ${short(g.v.resU)}/m\u00b2, villages and rural land ${short(g.v.resR)}/m\u00b2. Range across the LGA ${short(g.v.lo)} to ${short(g.v.hi)}. ${g.ev?`Backed by ${g.ev} listings in or near the LGA.`:'No listings in the LGA; modelled.'}`:`Typical for ${esc(g.n)} as a whole; pick a place or a house for its own figure.`;
   $('panel').innerHTML=`${crumbs([['Nigeria','ng'],[SC[g.s],'s:'+g.s],[g.n+' LGA',null]])}
-   <div class="ptitle"><div><h3>${esc(g.n)} LGA</h3><div class="tags"><span class="tag ${g.cls==='Rural'?'':'u'}">${g.cls}</span><span class="tag">${esc(SC[g.s])}</span><span class="tag">${g.km2.toLocaleString('en-NG')} km\u00b2</span><span class="tag">${pl.length} places</span></div></div>${confPill(g.conf)}</div>
+   <div class="ptitle"><div><h3>${esc(g.n)} LGA</h3><div class="tags"><span class="tag ${g.cls==='Rural'?'':'u'}">${g.cls}</span><span class="tag">${esc(SC[g.s])}</span><span class="tag">${g.km2.toLocaleString('en-NG')} km\u00b2</span><span class="tag" data-np>${(g.np||0).toLocaleString('en-NG')} places</span></div></div>${confPill(g.conf)}</div>
    ${valueBlock(g.v,g.plot||600,TAB==='land'?', LGA median':', LGA typical',note)}
    ${zoneTable(g.zs,'Economic zones in '+esc(g.n))}
    <p class="note">NIPOST postcodes in ${esc(SC[g.s])} start <b class="mono">${g.s}</b>. Click a street or house on the map for its own postcode and values.</p>
-   <div><p class="eyebrow" style="margin-bottom:4px">Places in ${esc(g.n)} (${pl.length})</p>
-   <div class="lgafilt"><input type="search" id="lgaPlaceQ" placeholder="Find a place in this LGA"><select id="lgaPlaceT" aria-label="Level">${LTYPES.map(([v,n])=>`<option value="${v}">${n}</option>`).join('')}</select></div>
-   <table class="mini" id="lgaPlaces"></table></div>`;
-  const draw2=()=>{ const q=norm($('lgaPlaceQ').value), ty=$('lgaPlaceT').value; const rows=pl.filter(j=>(!q||norm(PL.n[j]).includes(q))&&(ty===''||PL.t[j]===+ty||(ty==='5'&&PL.t[j]===7))).slice(0,80);
-    $('lgaPlaces').innerHTML=rows.map(j=>`<tr><td><button type="button" data-place="${j}">${esc(PL.n[j])}</button> <span class="muted small">${TYPEN[PL.t[j]]}</span></td><td class="r">${fmtL(hk,pv.get(j))}${TAB==='land'?'/m\u00b2':''}</td></tr>`).join('')||'<tr><td class="muted">No match.</td></tr>'; };
-  $('lgaPlaceQ').addEventListener('input',draw2); $('lgaPlaceT').addEventListener('input',draw2); draw2();
+   <div id="lgaPlaceBlock"></div>`;
   setSel({kind:'lga',name:g.n+' LGA, '+SC[g.s],lat:g.lat,lng:g.lng,st:g.s,v:g.v,plot:g.plot||600,conf:g.conf});
+  svgMark();
+  if(fly) svgFitLGA(i);
+  if(fly) ensureMap().then(()=>{ if(panelGen!==gen) return; MAPI.fitLGA(i); MAPI.refresh(); });
+  else if(lgaPaths.length||MAPI.kind==='mapbox') MAPI.refresh();
+  try{ await ensureStatePlaces(g.s); }catch(e){ return; }
+  if(panelGen!==gen || !$('lgaPlaceBlock')) return;
+  const hk=TABS[TAB].head;
+  const pl=[]; for(let j=0;j<PL.full.length;j++) if(PL.full[j]&&PL.g[j]===i) pl.push(j);
+  const pv=new Map(pl.map(j=>[j,pval(j,hk)||0])); pl.sort((a,b)=>pv.get(b)-pv.get(a));
+  const count=pl.length||g.np||0;
+  const np=$('panel').querySelector('[data-np]'); if(np) np.textContent=count.toLocaleString('en-NG')+' places';
+  $('lgaPlaceBlock').innerHTML=`<p class="eyebrow" style="margin-bottom:4px">Places in ${esc(g.n)} (${count.toLocaleString('en-NG')})</p>
+   <div class="lgafilt"><input type="search" id="lgaPlaceQ" placeholder="Find a place in this LGA"><select id="lgaPlaceT" aria-label="Level">${LTYPES.map(([v,n])=>`<option value="${v}">${n}</option>`).join('')}</select></div>
+   <table class="mini" id="lgaPlaces"></table>`;
+  const draw2=()=>{ const q=norm($('lgaPlaceQ').value), ty=$('lgaPlaceT').value; const rows=pl.filter(j=>(!q||norm(PL.n[j]).includes(q))&&(ty===''||PL.t[j]===+ty||(ty==='5'&&PL.t[j]===7))).slice(0,80);
+    $('lgaPlaces').innerHTML=rows.map(j=>`<tr><td><button type="button" data-place="${j}" data-st="${g.s}">${esc(PL.n[j])}</button> <span class="muted small">${TYPEN[PL.t[j]]}</span></td><td class="r">${fmtL(hk,pv.get(j))}${TAB==='land'?'/m\u00b2':''}</td></tr>`).join('')||'<tr><td class="muted">No match.</td></tr>'; };
+  $('lgaPlaceQ').addEventListener('input',draw2); $('lgaPlaceT').addEventListener('input',draw2); draw2();
 }
 function selectState(c,fly=true){
   if(STI[c]==null) return loadSummary().then(()=>selectState(c,fly));
   RER=()=>selectState(c,false);
   const s=ST[STI[c]]; selState=c; selL=-1; selPt=null;
-  if(fly){ const b=s.bb; ensureMap().then(()=>{ MAPI.fitLL(b[1],b[0],b[3],b[2]); MAPI.refresh(); }); }
+  if(fly){ const b=s.bb; svgFitState(c); ensureMap().then(()=>{ MAPI.fitLL(b[1],b[0],b[3],b[2]); MAPI.refresh(); }); }
   else if(lgaPaths.length||MAPI.kind==='mapbox') MAPI.refresh();
   const hk=TABS[TAB].head;
   const lg=LG.map((g,i)=>[g,i]).filter(([g])=>g.s===c).sort((a,b)=>(b[0].v[hk]||0)-(a[0].v[hk]||0));
@@ -457,14 +568,15 @@ function selectState(c,fly=true){
 function nationalPanel(){
   RER=()=>nationalPanel();
   selState=null; selL=-1; selPt=null;
+  svgFit(); svgMark();
   if(lgaPaths.length||MAPI.kind==='mapbox') MAPI.refresh();
   const hk=TABS[TAB].head, hn=TABS[TAB].layers.find(l=>l[0]===hk)[1].toLowerCase();
   const top=[...LG.keys()].sort((a,b)=>(LG[b].v[hk]||0)-(LG[a].v[hk]||0)).slice(0,8);
   const nPl=(META.nPlaces||0).toLocaleString('en-NG');
   $('panel').innerHTML=`<div class="ptitle"><div><h3>Nigeria</h3><div class="tags"><span class="tag">37 states</span><span class="tag">774 LGAs</span><span class="tag">${nPl} places</span></div></div></div>
-   <p class="note">Click a state, an LGA, a dot or any house on the map, or enter coordinates above. Switch between land, building and rental values with the tabs. Each result gives the NIPOST postcode for the exact spot.</p>
    <div><p class="eyebrow" style="margin-bottom:4px">Highest LGAs, ${hn}</p><table class="mini">${top.map(i=>`<tr><td><button type="button" data-lga="${i}">${esc(LG[i].n)}</button> <span class="muted small">${LG[i].s}</span></td><td class="r">${fmtL(hk,LG[i].v[hk])}</td></tr>`).join('')}</table></div>
-   <div><p class="eyebrow" style="margin-bottom:4px">States, capital city</p><table class="mini">${[...ST].sort((a,b)=>(b.v[hk]||0)-(a.v[hk]||0)).map(s=>`<tr><td><button type="button" data-go="s:${s.c}">${esc(SC[s.c])}</button> <span class="muted small">${esc(s.cap)}</span></td><td class="r">${fmtL(hk,s.v[hk])}</td></tr>`).join('')}</table></div>`;
+   <div><p class="eyebrow" style="margin-bottom:4px">States, capital city</p><table class="mini">${[...ST].sort((a,b)=>(b.v[hk]||0)-(a.v[hk]||0)).map(s=>`<tr><td><button type="button" data-go="s:${s.c}">${esc(SC[s.c])}</button> <span class="muted small">${esc(s.cap)}</span></td><td class="r">${fmtL(hk,s.v[hk])}</td></tr>`).join('')}</table></div>
+   <p class="note">Click a state, an LGA, a dot or any house on the map, or enter coordinates above. Switch between land, building and rental values with the tabs. Each result gives the NIPOST postcode for the exact spot.</p>`;
 }
 $('panel').addEventListener('click',e=>{
   const b=e.target.closest('[data-go],[data-place],[data-lga],[data-copy],[data-sat],[data-pcgo]'); if(!b) return;
@@ -718,11 +830,12 @@ async function showPostcode(p){
 
 /* ---------- Mapbox GL satellite map ---------- */
 function loadMapbox(){ return new Promise((ok,no)=>{ if(window.mapboxgl) return ok();
-  const v='3.10.0', l=document.createElement('link'); l.rel='stylesheet'; l.href=`https://api.mapbox.com/mapbox-gl-js/v${v}/mapbox-gl.css`; document.head.appendChild(l);
-  const s=document.createElement('script'); s.src=`https://api.mapbox.com/mapbox-gl-js/v${v}/mapbox-gl.js`; s.onload=()=>ok(); s.onerror=no; document.head.appendChild(s); }); }
+  const v='3.10.0';
+  if(!document.querySelector('link[href*="mapbox-gl.css"]')){ const l=document.createElement('link'); l.rel='stylesheet'; l.href=`https://api.mapbox.com/mapbox-gl-js/v${v}/mapbox-gl.css`; l.fetchPriority='high'; document.head.appendChild(l); }
+  const s=document.createElement('script'); s.src=`https://api.mapbox.com/mapbox-gl-js/v${v}/mapbox-gl.js`; s.fetchPriority='high'; s.onload=()=>ok(); s.onerror=no; document.head.appendChild(s); }); }
 function MapboxMap(){
   const c=NP(); mapboxgl.accessToken=c.mapboxToken;
-  const el=$('mbmap'); el.hidden=false; canvas.hidden=true; $('mapcard').classList.add('mb'); $('basemap').hidden=false;
+  const el=$('mbmap'); canvas.hidden=true; el.classList.add('warming');
   const NG=[[2.65,4.2],[14.7,13.9]];
   let sat=true, curLayer=null, selShown=-1, hoverShown=-1, marker=null, plTimer=0;
   const map=new mapboxgl.Map({container:el, style:c.styleSatellite||'mapbox://styles/mapbox/satellite-streets-v12', bounds:NG, fitBoundsOptions:{padding:16}, maxBounds:[[-4,0],[22,18]], projection:'mercator', attributionControl:true});
@@ -762,6 +875,7 @@ function MapboxMap(){
     curLayer=layer; selShown=-1; hoverShown=-1; api.refresh();
   }
   map.on('style.load',addLayers);
+  map.once('idle',()=>{ handoffSvg(); el.classList.remove('warming'); $('mapcard').classList.add('mb'); $('basemap').hidden=false; map.resize(); });
   map.on('moveend',()=>{ clearTimeout(plTimer); plTimer=setTimeout(()=>{
     const z=map.getZoom(), b=map.getBounds();
     const pending=z<6.2?Promise.resolve():Promise.all(statesInBox(b.getSouth(),b.getWest(),b.getNorth(),b.getEast()).map(ensureStatePlaces));
@@ -833,46 +947,46 @@ function syncViewPlaces(){
   Promise.all(need.map(ensureStatePlaces)).then(()=>{ if(tok===viewTok && MAPI.kind==='canvas') draw(); });
 }
 function useCanvas(){
-  MAPI=CANVAS_MAP; $('mbmap').hidden=true; canvas.hidden=false;
+  MAPI=CANVAS_MAP; const mb=$('mbmap'); if(mb){ mb.hidden=true; mb.classList.remove('warming'); }
+  $('mapcard').classList.remove('mb'); canvas.hidden=false; if(svgMap) svgMap.hidden=true;
   resize(); fitAll();
   if(!canvasSized){ canvasSized=true; new ResizeObserver(()=>resize()).observe(canvas); }
 }
 function ensureMap(){
   if(mapP) return mapP;
-  const btn=$('showmap'); if(btn) btn.textContent='Loading map\u2026';
   mapP=(async()=>{
-    await loadSummary();
-    await ensureGeo();
-    readColors();
-    const ph=$('mapph'); if(ph) ph.hidden=true;
-    $('mapcard').classList.add('on');
     const tok=NP().mapboxToken;
+    const lib=tok?loadMapbox():Promise.resolve();
+    await loadSummary();
+    const geo=ensureGeo();
+    await Promise.all([lib, geo]);
+    readColors();
+    $('mapcard').classList.add('on');
     if(tok){
       try{
-        await loadMapbox();
         if(window.mapboxgl&&mapboxgl.supported&&!mapboxgl.supported()) throw new Error('WebGL unavailable');
         MAPI=MapboxMap();
       }catch(err){ console.warn('Mapbox unavailable, using the plain map', err); useCanvas(); }
     } else useCanvas();
     syncViewPlaces();
-  })().catch(err=>{ mapP=null; if(btn) btn.textContent='Show map'; throw err; });
+  })().catch(err=>{ mapP=null; throw err; });
   return mapP;
 }
-function setupMapTrigger(){
-  const card=$('mapcard'), start=()=>{ ensureMap().catch(()=>{}); };
-  const btn=$('showmap'); if(btn) btn.addEventListener('click',e=>{ e.stopPropagation(); start(); });
-  const ph=$('mapph'); if(ph) ph.addEventListener('click',start);
-  if(card && 'IntersectionObserver' in window){
-    const io=new IntersectionObserver(es=>{ if(es.some(x=>x.isIntersecting&&x.intersectionRatio>=0.25)){ io.disconnect(); start(); } },{threshold:[0.25]});
-    io.observe(card);
-  }
+function startPlaceFetch(){
+  placePri='low';
+  ensurePlaces().catch(()=>{});
+  ensureEvidence().catch(()=>{});
 }
 
 /* ---------- boot ---------- */
 (async()=>{
   readColors();
-  setupMapTrigger();
-  try{ await loadSummary(); }catch(err){ console.warn('Summary did not load; the printed figures stay on the page.', err); return; }
+  bindSvg();
+  window.__lbPlacesReady=0;
+  const summaryReady=loadSummary();
+  ensureMap().catch(err=>console.warn('Map did not start', err));
+  summaryReady.then(()=>{ paintSvgLayer(); setTimeout(startPlaceFetch, 40); });
+  try{ await summaryReady; }catch(err){ console.warn('Summary did not load; the printed figures stay on the page.', err); return; }
   dispatchEvent(new Event('lvb:data'));
   FX=META.fx||FX; BUILD=META.build||BUILD;
   $('edDate').textContent=dlong(META.date); $('edFx').textContent=FX.toLocaleString('en-NG'); $('sDate').textContent=dlong(META.date);
