@@ -213,5 +213,28 @@ for g in lg_out: g['plot']=PLOT.get(g['s'], 900 if g['s'] in NORTH else 600)
 
 for i,g in enumerate(lg_out): g['zs'] = [[z_, n_, res_*CAL, com_*CAL, (farm_*CAL if farm_ else farm_), r3_] for z_, n_, res_, com_, farm_, r3_ in zsum[i]]
 pv = pv*CAL
+
+# ---------- two-week rolling value ----------
+# A single week's mix of advertised plots can swing an LGA by 2-3x. Published values are the geometric mean of this week's
+# reading and last week's published value (so a real trend comes through within a few weeks, a one-week blip doesn't).
+# Places move with their LGA. Set LVB_NOBLEND=1 after a deliberate method change.
+_prevp = 'out/prev_lgas.json'
+if os.path.exists(_prevp) and not os.environ.get('LVB_NOBLEND'):
+    _prev = {(g['s'], g['n']): g['v'] for g in json.load(open(_prevp))['lgas']}
+    LANDK = ('res','com','ind','farm','lo','hi','resU','resR'); RENTK = ('rent1','rent2','rent3','rent4','crent'); SALEK = ('sale2','sale3','sale4','sale5','bpm')
+    def _k(new, old): return float(np.clip((old/new)**0.5, 0.6, 1.6)) if new and old else 1.0
+    nb = 0
+    for i,g in enumerate(lg_out):
+        o = _prev.get((g['s'], g['n']))
+        if not o: continue
+        kl, kr, ks = _k(g['v']['res'], o.get('res')), _k(g['v'].get('rent3'), o.get('rent3')), _k(g['v'].get('sale4'), o.get('sale4'))
+        for ks_, keys in ((kl, LANDK), (kr, RENTK), (ks, SALEK)):
+            for k in keys:
+                if g['v'].get(k): g['v'][k] *= ks_
+        g['zs'] = [[z_, n_, res_*kl, com_*kl, (farm_*kl if farm_ else farm_), r3_*kr] for z_, n_, res_, com_, farm_, r3_ in g['zs']]
+        js = by.get(i, [])
+        if js: pv[np.array(js, int)] *= kl
+        nb += 1
+    print('two-week blend applied to', nb, 'LGAs')
 pickle.dump({'lg_out':lg_out,'pv':pv.tolist(),'pconf':pconf.tolist(),'pev':pev.tolist(),'tier':tier.tolist(),'zone':zone.tolist(),'RM_beta':{m:float(RM[m].beta[1]) for m in RM},'holdout':HOLD}, open('out/model.pkl','wb'))
 print('done', collections.Counter(g['cls'] for g in lg_out))
