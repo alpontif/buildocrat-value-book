@@ -22,12 +22,12 @@
       "*": 20
     },
     "jiji_pages": {
-      "lagos": 40,
-      "abuja": 40,
-      "rivers": 25,
-      "ogun": 25,
-      "oyo": 25,
-      "*": 15
+      "lagos": 200,
+      "abuja": 200,
+      "rivers": 90,
+      "ogun": 90,
+      "oyo": 90,
+      "*": 60
     }
   },
   "whatsapp": "+2347018024292",

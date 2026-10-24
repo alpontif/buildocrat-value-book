@@ -105,6 +105,20 @@ def npc_land():
                     seen.add(x['href']); out.append(x); new += 1
             got += new
             if new == 0 or not re.search(r'[?&]page=%d\b' % (p + 1), h): break
+        # NPC search stops at page 50 (~1,000 listings): go area by area for the states that reach it
+        if got >= 950:
+            locs = sorted({x['loc'] for x in out if x['state'] == st and x['loc'] != st} | set(C.get('npc_localities', {}).get(st, [])))
+            for loc in locs:
+                for p in range(1, 51):
+                    if ck.up(): break
+                    h = get(f'https://nigeriapropertycentre.com/for-sale/land/{st}/{loc}/showtype?page={p}'); pause(); ck.hit(h is not None)
+                    if not h: break
+                    arts = BeautifulSoup(h, 'html.parser').find_all('article')
+                    if not arts: break
+                    for a in arts:
+                        x = parse_npc_article(a, st)
+                        if x and x['href'] not in seen: seen.add(x['href']); out.append(x); got += 1
+                    if not re.search(r'[?&]page=%d\b' % (p + 1), h): break
         if got: done.add(st)
         print(f'  npc {st}: {got}  ({(time.time()-T0)/60:.0f} min)', flush=True)
     return merge_old('lb_npc_land.json', out, done)
@@ -192,13 +206,14 @@ JIJI = [('ls', 'land-and-plots-for-sale'), ('hs', 'houses-apartments-for-sale'),
 
 def jiji():
     api = 'https://jiji.ng/api_web/v1/listing?slug={c}&region_slug={st}&page={p}&sort=new'
-    cap = C.get('jiji_pages', {'lagos': 40, 'abuja': 40, 'rivers': 25, 'ogun': 25, 'oyo': 25, '*': 15})
+    cap = C.get('jiji_pages', {'lagos': 200, 'abuja': 200, 'rivers': 90, 'ogun': 90, 'oyo': 90, '*': 60})
     out, seen, done = [], set(), set(); ck = Clock('jiji')
     for st in ORDER:
         if ck.up(): break
         n0 = len(out)
         for code, slug in JIJI:
-            for p in range(1, cap.get(st, cap['*']) + 1):
+            cp = cap.get(st, cap['*']) if code == 'ls' else min(cap.get(st, cap['*']), {'lagos': 120, 'abuja': 120}.get(st, 60))
+            for p in range(1, cp + 1):
                 if ck.up(): break
                 j = get(api.format(c=slug, st=st, p=p), 'json'); pause(); ck.hit(j is not None)
                 al = (j or {}).get('adverts_list') or {}
